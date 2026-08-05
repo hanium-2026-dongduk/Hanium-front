@@ -106,7 +106,7 @@ class _StoryCreationScreenState extends State<StoryCreationScreen> {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
-                      // ✨ 버튼을 누르면 스토리 설정 화면(SG03)으로 부드럽게 이동!
+                      // 버튼 클릭 시 스토리 설정 화면으로 이동
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -151,7 +151,7 @@ class _StoryCreationScreenState extends State<StoryCreationScreen> {
         });
       },
       child: Container(
-        height: 120, // 태블릿 화면 고려한 높이
+        height: 120, // 태블릿 화면 고려
         decoration: BoxDecoration(
           color: isSelected
               ? const Color(0xFFF4DC08)

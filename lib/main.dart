@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme/theme.dart';
-import 'package:hanium_front/screens/story_creation_screen.dart'; // ✨ 다시 첫 단계 화면으로!
+import 'package:hanium_front/screens/story_creation_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
       title: 'Magic Book',
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
-      home: const StoryCreationScreen(), // ✨ 앱 시작점 변경
+      home: const StoryCreationScreen(), // 앱 시작점 변경
     );
   }
 }

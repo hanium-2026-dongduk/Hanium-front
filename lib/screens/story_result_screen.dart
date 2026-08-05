@@ -18,7 +18,7 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              // ✨ 처음으로 돌아가기 기능 (모든 화면을 끄고 첫 화면으로!)
+              // 처음으로 돌아가기 기능 (모든 화면을 끄고 첫 화면으로)
               Navigator.popUntil(context, (route) => route.isFirst);
             },
             child: const Text('처음으로', style: TextStyle(color: Color(0xFFF4DC08))),
@@ -28,7 +28,7 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
-          // ✨ 에러 방지: 높이가 넘쳐도 스크롤되도록 감싸주기!
+          // 에러 방지: 높이가 넘쳐도 스크롤되도록 감싸주기
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Row(
@@ -76,10 +76,10 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
                         style: TextStyle(fontSize: 18, color: Colors.white70),
                       ),
                       const SizedBox(height: 32),
-                      // ✨ Row 대신 Wrap을 사용해서 좁은 화면에서는 버튼이 밑으로 떨어지게 만듦!
+                      // Wrap 사용으로 좁은 화면에서는 버튼이 밑으로 떨어지도록 함
                       Wrap(
-                        spacing: 16, // 버튼 사이의 가로 여백
-                        runSpacing: 12, // 줄바꿈이 일어났을 때의 세로 여백
+                        spacing: 16, // 버튼 사이 가로 여백
+                        runSpacing: 12, // 줄바꿈 시 세로 여백
                         children: [
                           ElevatedButton.icon(
                             onPressed: () {
@@ -104,7 +104,6 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
                         ],
                       ),
 
-                      // ✨ 범인이었던 Spacer() 제거하고 고정 여백으로 대체!
                       const SizedBox(height: 40),
 
                       const Text(

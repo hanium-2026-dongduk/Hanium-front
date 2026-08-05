@@ -39,7 +39,7 @@ class _StoryKeywordScreenState extends State<StoryKeywordScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1단계에서 뭘 선택했는지 위쪽에 살짝 보여주면 UX가 훨씬 좋아져!
+                // 이전 단계에서 선택한 내용 표시
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(

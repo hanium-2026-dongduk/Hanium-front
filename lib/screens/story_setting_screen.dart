@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'story_keyword_screen.dart'; // ✨ 새로 만들 2단계 화면 불러오기
+import 'story_keyword_screen.dart';
 
 class StorySettingScreen extends StatefulWidget {
   const StorySettingScreen({super.key});
@@ -58,7 +58,7 @@ class _StorySettingScreenState extends State<StorySettingScreen> {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
-                      // ✨ 선택한 장소와 사건 데이터를 2단계 화면으로 넘기며 이동!
+                      // 선택한 장소와 사건 데이터를 2단계 화면으로 넘기며 이동
                       Navigator.push(
                         context,
                         MaterialPageRoute(
