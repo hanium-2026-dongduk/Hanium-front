@@ -20,6 +20,13 @@ class AppTheme {
         backgroundColor: navyColor,
         elevation: 0,
         centerTitle: true,
+        // 앱바 제목 기본 스타일
+        titleTextStyle: TextStyle(
+          color: Colors.white, // 기본 글씨 하얀색
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'CookieRun', // 제목 쿠키런체로 고정
+        ),
       ),
 
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -28,7 +35,7 @@ class AppTheme {
           foregroundColor: navyColor,
           textStyle: const TextStyle(
             fontSize: 18,
-            fontWeight: FontWeight.bold, // Bold 폰트가 자동으로 적용돼
+            fontWeight: FontWeight.bold, // Bold 폰트 자동 적용
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
