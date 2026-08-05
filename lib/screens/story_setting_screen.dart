@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'story_result_screen.dart'; // 이따가 만들 결과 화면
+import 'story_keyword_screen.dart'; // ✨ 새로 만들 2단계 화면 불러오기
 
 class StorySettingScreen extends StatefulWidget {
   const StorySettingScreen({super.key});
@@ -9,16 +9,8 @@ class StorySettingScreen extends StatefulWidget {
 }
 
 class _StorySettingScreenState extends State<StorySettingScreen> {
-  // --- [SG03] 스토리 설정 상태 변수 ---
   String _selectedLocation = '';
   String _selectedEvent = '';
-  final TextEditingController _keywordController = TextEditingController();
-
-  @override
-  void dispose() {
-    _keywordController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,9 +26,6 @@ class _StorySettingScreenState extends State<StorySettingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ==========================================
-                // [SG03_STORY_01] 스토리 배경 선택
-                // ==========================================
                 _buildSectionTitle('어디에서 일어날까요?'),
                 const SizedBox(height: 16),
                 Row(
@@ -49,9 +38,6 @@ class _StorySettingScreenState extends State<StorySettingScreen> {
                 ),
                 const SizedBox(height: 40),
 
-                // ==========================================
-                // [SG03_STORY_02] 핵심 사건 선택
-                // ==========================================
                 _buildSectionTitle('어떤 일이 일어날까요?'),
                 const SizedBox(height: 16),
                 Row(
@@ -62,53 +48,31 @@ class _StorySettingScreenState extends State<StorySettingScreen> {
                     _buildCircleSelectBtn('친구 구하기', Icons.people, false),
                   ],
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 60),
 
                 // ==========================================
-                // [SG03_STORY_01, 02] 상세 스토리 키워드 직접 입력
-                // ==========================================
-                _buildSectionTitle('어떤 이야기를 만들어볼까요?'),
-                const SizedBox(height: 8),
-                const Text(
-                  '팁: "공룡과 친구가 되는 이야기"처럼 짧게 써도 좋아요!',
-                  style: TextStyle(color: Colors.white54, fontSize: 12),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _keywordController,
-                  maxLength: 100, // 요구사항 반영: 최대 100자 제한
-                  maxLines: 4,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: '비행기 조종사가 된 우리 아이가 구름 나라에 가서 길을 잃은 아기 천사를 도와주는 이야기...',
-                    hintStyle: const TextStyle(color: Colors.white30),
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 40),
-
-                // ==========================================
-                // 동화 마법 부리기 (결과 화면으로 이동)
+                // 다음 단계 (키워드 입력) 이동 버튼
                 // ==========================================
                 SizedBox(
                   width: double.infinity,
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
-                      // 다음 화면으로 넘어가기
+                      // ✨ 선택한 장소와 사건 데이터를 2단계 화면으로 넘기며 이동!
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const StoryResultScreen(),
+                          builder: (context) => StoryKeywordScreen(
+                            location: _selectedLocation,
+                            event: _selectedEvent,
+                          ),
                         ),
                       );
                     },
-                    child: const Text('✨ 동화 마법 부리기', style: TextStyle(fontSize: 18)),
+                    child: const Text(
+                      '다음',
+                      style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
               ],
@@ -126,7 +90,6 @@ class _StorySettingScreenState extends State<StorySettingScreen> {
     );
   }
 
-  // 동그란 선택 아이콘 버튼 (UI 정의서 반영)
   Widget _buildCircleSelectBtn(String label, IconData icon, bool isLocation) {
     bool isSelected = isLocation ? _selectedLocation == label : _selectedEvent == label;
     return GestureDetector(

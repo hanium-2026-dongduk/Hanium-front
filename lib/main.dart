@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme/theme.dart';
-import 'package:hanium_front/screens/story_creation_screen.dart';
+import 'package:hanium_front/screens/story_creation_screen.dart'; // ✨ 다시 첫 단계 화면으로!
 
 void main() {
   runApp(const MyApp());
@@ -15,9 +15,7 @@ class MyApp extends StatelessWidget {
       title: 'Magic Book',
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
-
-      // ✨ 임시 테스트 코드를 지우고, 우리가 만든 스토리 생성 화면을 앱의 첫 화면으로 지정!
-      home: const StoryCreationScreen(),
+      home: const StoryCreationScreen(), // ✨ 앱 시작점 변경
     );
   }
 }

@@ -8,7 +8,6 @@ class StoryResultScreen extends StatefulWidget {
 }
 
 class _StoryResultScreenState extends State<StoryResultScreen> {
-  // TTS 재생 상태를 시뮬레이션 하기 위한 변수
   bool _isPlaying = false;
 
   @override
@@ -19,7 +18,7 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              // 처음으로 돌아가기 기능
+              // ✨ 처음으로 돌아가기 기능 (모든 화면을 끄고 첫 화면으로!)
               Navigator.popUntil(context, (route) => route.isFirst);
             },
             child: const Text('처음으로', style: TextStyle(color: Color(0xFFF4DC08))),
@@ -29,15 +28,12 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
-          child: Padding(
+          // ✨ 에러 방지: 높이가 넘쳐도 스크롤되도록 감싸주기!
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
-            // 태블릿 대응: 넓은 화면에서는 가로로 이미지-텍스트 배치
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ==========================================
-                // [SG04] 생성된 삽화 렌더링 영역
-                // ==========================================
                 Expanded(
                   flex: 1,
                   child: Container(
@@ -45,7 +41,6 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
-                      // TODO: 나중에 실제 DALL-E 생성 이미지 URL로 교체
                       image: const DecorationImage(
                         image: NetworkImage('https://picsum.photos/400/400'),
                         fit: BoxFit.cover,
@@ -54,16 +49,11 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
                   ),
                 ),
                 const SizedBox(width: 32),
-
-                // ==========================================
-                // [SG04, SG05] 텍스트 및 학습 인터페이스 영역
-                // ==========================================
                 Expanded(
                   flex: 1,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // [SG05_LEARN_02] 문장 하이라이트 UI 시뮬레이션
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -86,9 +76,10 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
                         style: TextStyle(fontSize: 18, color: Colors.white70),
                       ),
                       const SizedBox(height: 32),
-
-                      // [SG05_LEARN_01, 05] TTS 및 단어장 액션 버튼
-                      Row(
+                      // ✨ Row 대신 Wrap을 사용해서 좁은 화면에서는 버튼이 밑으로 떨어지게 만듦!
+                      Wrap(
+                        spacing: 16, // 버튼 사이의 가로 여백
+                        runSpacing: 12, // 줄바꿈이 일어났을 때의 세로 여백
                         children: [
                           ElevatedButton.icon(
                             onPressed: () {
@@ -99,10 +90,10 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
                             icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
                             label: Text(_isPlaying ? '일시정지' : '영어로 듣기 (TTS)'),
                           ),
-                          const SizedBox(width: 16),
+                          // Wrap을 쓰면 SizedBox로 여백을 주지 않아도 spacing 속성이 알아서 띄워줘!
                           OutlinedButton.icon(
                             onPressed: () {
-                              // [SG05_LEARN_05] 단어장 저장 로직
+                              // 단어장 저장 로직
                             },
                             icon: const Icon(Icons.bookmark_add, color: Colors.white),
                             label: const Text('내 책장에 저장', style: TextStyle(color: Colors.white)),
@@ -112,16 +103,15 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
                           ),
                         ],
                       ),
-                      const Spacer(),
 
-                      // ==========================================
-                      // [SG04_GEN_03] 스토리 이어가기 선택지 제공 (비선형 분기)
-                      // ==========================================
+                      // ✨ 범인이었던 Spacer() 제거하고 고정 여백으로 대체!
+                      const SizedBox(height: 40),
+
                       const Text(
                         '다음에 어떤 일이 일어날까요?',
                         style: TextStyle(color: Color(0xFFF4DC08), fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(

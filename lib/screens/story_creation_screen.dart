@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hanium_front/screens/story_setting_screen.dart';
 
 class StoryCreationScreen extends StatefulWidget {
   const StoryCreationScreen({super.key});
@@ -105,9 +106,13 @@ class _StoryCreationScreenState extends State<StoryCreationScreen> {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
-                      print('선택 방식: $_selectedMethod');
-                      print('이름: ${_nameController.text}');
-                      print('스타일: $_selectedStyle');
+                      // ✨ 버튼을 누르면 스토리 설정 화면(SG03)으로 부드럽게 이동!
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const StorySettingScreen(),
+                        ),
+                      );
                     },
                     child: const Text(
                       '다음 단계로 (스토리 배경 설정)',
