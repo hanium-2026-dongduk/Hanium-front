@@ -107,7 +107,7 @@ class _StoryKeywordScreenState extends State<StoryKeywordScreen> {
                     },
                     child: const Text(
                       '✨ 동화 마법 부리기',
-                      style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),

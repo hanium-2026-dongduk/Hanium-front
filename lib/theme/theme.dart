@@ -10,11 +10,8 @@ class AppTheme {
       primaryColor: navyColor,
       scaffoldBackgroundColor: navyColor,
 
-      // ✨ 폰트 매직 시작 ✨
-      // 영문 기본 폰트로 Quicksand 지정
-      fontFamily: 'Quicksand',
-      // Quicksand에 없는 한글은 쿠키런체로 렌더링되도록 Fallback(대체) 지정
-      fontFamilyFallback: const ['CookieRun'],
+      // ✨ 앱 전체 기본 폰트를 쿠키런체로 완벽하게 통일!
+      fontFamily: 'CookieRun',
 
       appBarTheme: const AppBarTheme(
         backgroundColor: navyColor,
@@ -36,6 +33,7 @@ class AppTheme {
           textStyle: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold, // Bold 폰트 자동 적용
+            fontFamily: 'CookieRun', // 버튼 텍스트도 확실하게 쿠키런체 적용
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),

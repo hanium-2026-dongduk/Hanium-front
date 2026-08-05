@@ -71,7 +71,7 @@ class _StorySettingScreenState extends State<StorySettingScreen> {
                     },
                     child: const Text(
                       '다음',
-                      style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
