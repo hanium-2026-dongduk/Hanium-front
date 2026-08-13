@@ -1,46 +1,80 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
+
+import 'core/api_client.dart';
+import 'core/token_storage.dart';
+import 'providers/auth_provider.dart';
+import 'screens/auth_gate.dart';
+import 'services/auth_service.dart';
+import 'services/profile_service.dart';
 import 'theme/theme.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await dotenv.load();
+  } catch (_) {
+    // .env를 아직 안 만들었어도 앱은 뜬다. (ApiConfig가 로컬 기본값으로 떨어짐)
+    debugPrint('.env를 찾지 못했어요. cp .env.example .env 로 만들어 주세요.');
+  }
+
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late final TokenStorage _tokenStorage;
+  late final ApiClient _apiClient;
+  late final AuthProvider _authProvider;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 앱이 공유하는 객체들을 여기서 한 번만 만든다.
+    _tokenStorage = TokenStorage();
+    _apiClient = ApiClient(tokenStorage: _tokenStorage);
+    _authProvider = AuthProvider(
+      authService: AuthService(_apiClient),
+      tokenStorage: _tokenStorage,
+    );
+
+    // 토큰 갱신까지 실패하면 AuthProvider가 로그인 화면으로 되돌린다.
+    // 서로를 참조해야 해서 생성자 대신 여기서 연결한다.
+    _apiClient.onSessionExpired = _authProvider.handleSessionExpired;
+
+    // 저장된 토큰으로 자동 로그인을 시도한다.
+    _authProvider.bootstrap();
+  }
+
+  @override
+  void dispose() {
+    _authProvider.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Magic Book',
-      theme: AppTheme.lightTheme, // theme.dart에서 정의한 테마 적용
-      debugShowCheckedModeBanner: false, // 우측 상단 디버그(Debug) 띠 제거
-      home: const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // 영어 폰트(Quicksand) 테스트
-              Text(
-                'Hello, Magic Book!',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white, // 네이비 배경에서 잘 보이도록 흰색 지정
-                ),
-              ),
-              SizedBox(height: 20),
-              // 한글 폰트(CookieRun) 테스트
-              Text(
-                '안녕, 꼬마 마법사!',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.yellowColor, // 포인트 컬러인 노란색 지정
-                ),
-              ),
-            ],
-          ),
-        ),
+    return MultiProvider(
+      providers: [
+        // 새 기능의 Service를 추가할 때는 여기에 한 줄씩 등록하면 된다.
+        Provider<ApiClient>.value(value: _apiClient),
+        ChangeNotifierProvider<AuthProvider>.value(value: _authProvider),
+        Provider<ProfileService>(create: (_) => ProfileService(_apiClient)),
+      ],
+      child: MaterialApp(
+        title: 'Magic Book',
+        theme: AppTheme.lightTheme, // theme.dart에서 정의한 테마 적용
+        debugShowCheckedModeBanner: false, // 우측 상단 디버그(Debug) 띠 제거
+        home: const AuthGate(),
       ),
     );
   }
