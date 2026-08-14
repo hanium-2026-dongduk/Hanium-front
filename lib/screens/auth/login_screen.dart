@@ -120,7 +120,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(color: Colors.white70),
                     ),
                   ),
-                  // TODO(#6): ID/PW 찾기(P-AU-AU03) 진입 버튼 자리
+                  // TODO(#6): 비밀번호 재설정(P-AU-AU03) 진입 버튼 자리.
+                  // 서버 API는 이미 있다.
+                  //   POST /auth/password/reset-request → 인증번호 발송
+                  //   PUT  /auth/password/reset         → 인증번호 + 새 비밀번호로 재설정
+                  // 아이디(이메일) 찾기는 요구사항에 없어 재설정 하나로 통합돼 있다.
                 ],
               ),
             ),

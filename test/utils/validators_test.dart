@@ -15,18 +15,54 @@ void main() {
   });
 
   group('비밀번호 검증은', () {
-    test('빈 값과 7자는 거부하고 8자부터 허용한다', () {
+    test('빈 값과 7자는 거부한다', () {
       expect(Validators.password(''), '비밀번호를 입력해 주세요.');
-      expect(Validators.password('1234567'), '비밀번호는 8자 이상이어야 해요.');
-      expect(Validators.password('12345678'), isNull);
+      expect(Validators.password('Aa1!567'), '비밀번호는 8자 이상이어야 해요.');
+    });
+
+    test('서버 정책대로 영문·숫자·특수문자를 각각 요구한다', () {
+      // 길이는 충분하지만 한 종류씩 빠진 경우
+      expect(Validators.password('12345678!'), '영문을 1자 이상 넣어 주세요.');
+      expect(Validators.password('abcdefgh!'), '숫자를 1자 이상 넣어 주세요.');
+      expect(Validators.password('abcdefg1'), '특수문자를 1자 이상 넣어 주세요.');
+    });
+
+    test('세 종류를 모두 갖춘 8자는 통과한다', () {
+      expect(Validators.password('abcdefg1!'), isNull);
+      expect(Validators.password('Aa1!Aa1!'), isNull);
     });
   });
 
-  group('이름 검증은', () {
-    test('공백은 제거해 검사하고 20자는 허용하지만 21자는 거부한다', () {
-      expect(Validators.name('   '), '이름을 입력해 주세요.');
-      expect(Validators.name('가' * 20), isNull);
-      expect(Validators.name('가' * 21), '이름은 20자까지 쓸 수 있어요.');
+  group('인증번호 검증은', () {
+    test('숫자 6자리만 허용한다', () {
+      expect(Validators.verificationCode(''), '인증번호를 입력해 주세요.');
+      expect(Validators.verificationCode('12345'), '인증번호는 숫자 6자리예요.');
+      expect(Validators.verificationCode('1234567'), '인증번호는 숫자 6자리예요.');
+      expect(Validators.verificationCode('12345a'), '인증번호는 숫자 6자리예요.');
+      expect(Validators.verificationCode(' 123456 '), isNull);
+    });
+  });
+
+  group('자녀 이름 검증은', () {
+    test('공백은 제거해 검사하고 100자는 허용하지만 101자는 거부한다', () {
+      expect(Validators.childName('   '), '이름을 입력해 주세요.');
+      expect(Validators.childName('가' * 100), isNull);
+      expect(Validators.childName('가' * 101), '이름은 100자까지 쓸 수 있어요.');
+    });
+  });
+
+  group('자녀 나이 검증은', () {
+    test('선택 항목이라 비워두면 통과한다', () {
+      expect(Validators.childAge(null), isNull);
+      expect(Validators.childAge('  '), isNull);
+    });
+
+    test('서버 범위(1~15)를 벗어나거나 숫자가 아니면 거부한다', () {
+      expect(Validators.childAge('일곱'), '나이는 숫자로 입력해 주세요.');
+      expect(Validators.childAge('0'), '나이는 1살부터 15살까지 넣을 수 있어요.');
+      expect(Validators.childAge('16'), '나이는 1살부터 15살까지 넣을 수 있어요.');
+      expect(Validators.childAge('1'), isNull);
+      expect(Validators.childAge('15'), isNull);
     });
   });
 

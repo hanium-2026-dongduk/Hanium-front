@@ -4,6 +4,7 @@ import '../core/api_exception.dart';
 import '../core/token_storage.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
+import '../services/profile_service.dart';
 
 /// 앱이 지금 로그인 상태인지 나타낸다.
 /// [unknown]은 아직 저장된 토큰을 확인하는 중이라는 뜻으로, 스플래시를 띄우는 구간이다.
@@ -18,9 +19,15 @@ enum AuthStatus { unknown, authenticated, unauthenticated }
 /// ```
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService;
+  final ProfileService _profileService;
   final TokenStorage _tokenStorage;
 
-  AuthProvider({required this._authService, required this._tokenStorage});
+  AuthProvider({
+    required this._authService,
+    required this._profileService,
+    required this._tokenStorage,
+  });
+
 
   AuthStatus _status = AuthStatus.unknown;
   User? _user;
@@ -37,44 +44,79 @@ class AuthProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   /// 앱이 시작될 때 한 번 호출한다.
-  /// 저장된 토큰이 아직 유효하면 로그인 화면을 건너뛴다.
+  ///
+  /// 백엔드에 "내 정보" 엔드포인트가 없어서, 저장해둔 user를 복원한 뒤
+  /// 인증이 필요한 API(`GET /api/children`)를 한 번 불러 토큰이 아직 살아있는지 확인한다.
+  /// 액세스 토큰이 만료됐어도 ApiClient가 리프레시를 한 번 시도해준다.
   Future<void> bootstrap() async {
     final accessToken = await _tokenStorage.readAccessToken();
-    if (accessToken == null) {
+    final storedUser = await _tokenStorage.readUser();
+    if (accessToken == null || storedUser == null) {
       _setStatus(AuthStatus.unauthenticated);
       return;
     }
 
     try {
-      // 토큰이 만료됐어도 ApiClient가 리프레시를 한 번 시도해준다.
-      _user = await _authService.fetchMe();
+      await _profileService.fetchProfiles();
+      _user = storedUser;
       _setStatus(AuthStatus.authenticated);
-    } on ApiException {
+    } on ApiException catch (error) {
+      // 토큰 문제일 때만 로그아웃시킨다. 서버가 죽었거나 네트워크가 끊긴 것뿐이라면
+      // 저장된 세션을 버리지 않고 그대로 들여보낸다.
+      if (!error.isUnauthorized) {
+        _user = storedUser;
+        _setStatus(AuthStatus.authenticated);
+        return;
+      }
       await _tokenStorage.clear();
       _setStatus(AuthStatus.unauthenticated);
     }
   }
 
-  /// P-AU-AU01 로그인. 성공하면 true.
-  Future<bool> login({required String email, required String password}) {
-    return _submit(
-      () => _authService.login(email: email, password: password),
+  /// P-AU-AU02 회원가입 1단계. 인증번호를 이메일로 보낸다.
+  Future<bool> sendSignupCode(String email) {
+    return _run(() => _authService.sendSignupCode(email));
+  }
+
+  /// P-AU-AU02 회원가입 2단계. 인증번호를 확인한다.
+  Future<bool> verifySignupCode({
+    required String email,
+    required String code,
+  }) {
+    return _run(
+      () => _authService.verifySignupCode(email: email, code: code),
     );
   }
 
-  /// P-AU-AU02 회원가입. 서버가 바로 토큰을 주므로 성공 시 로그인 상태가 된다.
+  /// P-AU-AU02 회원가입 3단계.
+  ///
+  /// 서버가 가입 응답으로 토큰을 주지 않으므로, 가입에 성공하면 같은 자격증명으로
+  /// 곧바로 로그인까지 해서 화면 흐름은 "가입하면 바로 로그인" 그대로 유지한다.
   Future<bool> signup({
     required String email,
     required String password,
-    required String name,
   }) {
-    return _submit(
-      () => _authService.signup(email: email, password: password, name: name),
+    return _run(() async {
+      await _authService.signup(email: email, password: password);
+      await _authenticate(
+        () => _authService.login(email: email, password: password),
+      );
+    });
+  }
+
+  /// P-AU-AU01 로그인. 성공하면 true.
+  Future<bool> login({required String email, required String password}) {
+    return _run(
+      () => _authenticate(
+        () => _authService.login(email: email, password: password),
+      ),
     );
   }
 
   Future<void> logout() async {
-    await _authService.logout();
+    // 서버가 폐기할 대상을 알아야 하므로 지우기 전에 읽어둔다.
+    final refreshToken = await _tokenStorage.readRefreshToken();
+    await _authService.logout(refreshToken);
     await _tokenStorage.clear();
     _user = null;
     _setStatus(AuthStatus.unauthenticated);
@@ -89,20 +131,26 @@ class AuthProvider extends ChangeNotifier {
     _setStatus(AuthStatus.unauthenticated);
   }
 
-  /// 로그인과 회원가입이 로딩/에러 처리를 똑같이 하므로 한곳에 모았다.
-  Future<bool> _submit(Future<AuthResult> Function() request) async {
+  /// 로그인 결과를 저장하고 로그인 상태로 만든다.
+  Future<void> _authenticate(Future<AuthResult> Function() request) async {
+    final result = await request();
+    await _tokenStorage.saveTokens(
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    );
+    await _tokenStorage.saveUser(result.user);
+    _user = result.user;
+    _status = AuthStatus.authenticated;
+  }
+
+  /// 인증 화면의 요청들이 로딩/에러 처리를 똑같이 하므로 한곳에 모았다.
+  Future<bool> _run(Future<void> Function() request) async {
     _isSubmitting = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final result = await request();
-      await _tokenStorage.saveTokens(
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
-      );
-      _user = result.user;
-      _status = AuthStatus.authenticated;
+      await request();
       return true;
     } on ApiException catch (error) {
       _errorMessage = error.message;

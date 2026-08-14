@@ -54,18 +54,63 @@ lib/
 
 ## 인증 API 계약
 
-백엔드([Hanium-back](https://github.com/hanium-2026-dongduk/Hanium-back))와 맞춰야 하는 스펙. 실패 응답은 공통으로 `{ "message": "..." }`.
+> **계약의 원본은 백엔드 저장소의 스펙 문서다.** 이 표는 요약일 뿐이니, 다를 때는 항상 아래가 맞다.
+> [`docs/API_SPEC_AUTH.md`](https://github.com/hanium-2026-dongduk/Hanium-back/blob/seo/docs/API_SPEC_AUTH.md) ·
+> [`docs/API_SPEC_PROFILE.md`](https://github.com/hanium-2026-dongduk/Hanium-back/blob/seo/docs/API_SPEC_PROFILE.md)
+> (현재 [Hanium-back PR #2](https://github.com/hanium-2026-dongduk/Hanium-back/pull/2) 브랜치에 있음)
 
-| 메서드 | 경로 | 요청 | 응답 |
+모든 응답은 봉투에 담겨 온다. **실제 값은 전부 `data` 안에 있다.**
+
+```jsonc
+// 성공
+{ "success": true, "message": "...", "data": { ... } }
+// 실패
+{ "success": false, "message": "...", "errors": [ ... ] }
+```
+
+### 인증 (`/api/auth`)
+
+| 메서드 | 경로 | 요청 | `data` 응답 |
 | :--- | :--- | :--- | :--- |
-| POST | `/api/auth/signup` | `email`, `password`, `name` | `accessToken`, `refreshToken`, `user` |
-| POST | `/api/auth/login` | `email`, `password` | `accessToken`, `refreshToken`, `user` |
-| POST | `/api/auth/refresh` | `refreshToken` | `accessToken`, `refreshToken` |
-| POST | `/api/auth/logout` | (Bearer) | - |
-| GET | `/api/users/me` | (Bearer) | `id`, `email`, `name` |
-| GET | `/api/profiles` | (Bearer) | `{ profiles: [...] }` |
-| POST | `/api/profiles` | `name`, `birthDate?`, `avatarKey?` | `{ profile: {...} }` |
-| PATCH | `/api/profiles/:id` | 위와 동일 | `{ profile: {...} }` |
-| DELETE | `/api/profiles/:id` | (Bearer) | - |
+| POST | `/auth/email/send` | `email` | - |
+| POST | `/auth/email/verify` | `email`, `code` | - |
+| POST | `/auth/signup` | `email`, `password` | `user` **(토큰 없음)** |
+| POST | `/auth/login` | `email`, `password` | `accessToken`, `refreshToken`, `user` |
+| POST | `/auth/refresh` | `refreshToken` | `accessToken`, `refreshToken` |
+| POST | `/auth/logout` | `refreshToken` | - |
+| POST | `/auth/password/reset-request` | `email` | - |
+| PUT | `/auth/password/reset` | `email`, `code`, `newPassword` | - |
 
-토큰은 `flutter_secure_storage`에 저장하고, 401을 받으면 `ApiClient`가 리프레시를 한 번 시도한 뒤 원래 요청을 재시도한다. 갱신까지 실패하면 토큰을 지우고 로그인 화면으로 돌아간다.
+**회원가입은 3단계다.** `email/send` → `email/verify` → `signup` 순서를 지켜야 하며, 인증을 건너뛰면 403이다.
+가입 응답에는 토큰이 없어서 `AuthProvider`가 곧바로 로그인까지 이어 준다.
+
+비밀번호는 **8자 이상 + 영문 + 숫자 + 특수문자**여야 한다. (`Validators.password`가 같은 규칙을 본다)
+
+`user`는 `user_id`, `email`, `role`, `status`다. **이름 컬럼이 없다.**
+
+### 자녀 프로필 (`/api/children`)
+
+경로가 `/profiles`가 아니라 **`/children`**이고, 수정은 `PATCH`가 아니라 **`PUT`**이다.
+
+| 메서드 | 경로 | 요청 | `data` 응답 |
+| :--- | :--- | :--- | :--- |
+| GET | `/children` | (Bearer) | `profiles: [...]` |
+| POST | `/children` | 아래 필드 | `profile` |
+| GET | `/children/:id` | (Bearer) | `profile` |
+| PUT | `/children/:id` | 아래 필드 | `profile` |
+| DELETE | `/children/:id` | (Bearer) | - |
+| PATCH | `/children/:id/activate` | (Bearer) | `profile` |
+
+필드는 `child_profile_id`, `user_id`, `child_name`(1~100자), `age`(1~15, 선택), `learning_level`(`beginner`/`intermediate`/`advanced`), `vocabulary_level`(선택), `profile_image_url`(선택), `is_active`.
+**생년월일과 아바타 키는 서버에 없다** — 나이와 이미지 URL로 대신한다.
+
+활성 프로필은 보호자당 최대 1개다. 첫 프로필은 자동으로 활성이 되고, 전환은 `activate` API로만 된다.
+수정 요청에 반영할 필드가 하나도 없으면 서버가 400을 낸다.
+
+### 토큰 취급
+
+토큰은 `flutter_secure_storage`에 저장한다. 401을 받으면 `ApiClient`가 리프레시를 한 번 시도한 뒤 원래 요청을 재시도하고, 갱신까지 실패하면 토큰을 지우고 로그인 화면으로 돌아간다.
+
+**리프레시 토큰은 서버가 항상 회전시킨다.** 갱신에 쓴 토큰은 즉시 폐기되므로 응답으로 받은 새 토큰을 반드시 저장해야 한다.
+
+서버에 "내 정보" 엔드포인트가 없어서, 로그인할 때 받은 `user`를 토큰과 함께 저장해두고 앱 재시작 시 복원한다. 저장된 토큰이 아직 살아있는지는 `GET /api/children`을 한 번 불러 확인한다.

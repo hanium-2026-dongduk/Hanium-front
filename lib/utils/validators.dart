@@ -1,9 +1,18 @@
 /// 인증 화면들이 공유하는 입력값 검증 규칙.
-/// 서버 검증과 어긋나지 않도록 규칙을 바꿀 때는 백엔드와 같이 맞춘다.
+///
+/// 서버 검증과 어긋나면 사용자가 제출한 뒤에야 에러를 보게 되므로,
+/// 규칙은 Hanium-back `docs/API_SPEC_AUTH.md` / `API_SPEC_PROFILE.md`에 맞춰둔다.
 class Validators {
   Validators._();
 
   static final _emailPattern = RegExp(r'^[\w.+-]+@[\w-]+\.[\w.-]+$');
+  static final _letterPattern = RegExp(r'[A-Za-z]');
+  static final _digitPattern = RegExp(r'[0-9]');
+
+  /// 영문/숫자/공백이 아닌 문자를 특수문자로 본다. (서버 passwordPolicy와 같은 기준)
+  static final _specialPattern = RegExp(r'[^A-Za-z0-9\s]');
+
+  static final _digitsOnlyPattern = RegExp(r'^\d+$');
 
   static String? email(String? value) {
     final input = value?.trim() ?? '';
@@ -12,17 +21,43 @@ class Validators {
     return null;
   }
 
+  /// 서버 정책(SC01_PWD_01): 8자 이상 + 영문 + 숫자 + 특수문자.
   static String? password(String? value) {
     final input = value ?? '';
     if (input.isEmpty) return '비밀번호를 입력해 주세요.';
     if (input.length < 8) return '비밀번호는 8자 이상이어야 해요.';
+    if (!_letterPattern.hasMatch(input)) return '영문을 1자 이상 넣어 주세요.';
+    if (!_digitPattern.hasMatch(input)) return '숫자를 1자 이상 넣어 주세요.';
+    if (!_specialPattern.hasMatch(input)) return '특수문자를 1자 이상 넣어 주세요.';
     return null;
   }
 
-  static String? name(String? value) {
+  /// 이메일로 받는 6자리 숫자 인증번호. 유효시간 5분.
+  static String? verificationCode(String? value) {
+    final input = value?.trim() ?? '';
+    if (input.isEmpty) return '인증번호를 입력해 주세요.';
+    if (input.length != 6 || !_digitsOnlyPattern.hasMatch(input)) {
+      return '인증번호는 숫자 6자리예요.';
+    }
+    return null;
+  }
+
+  /// 자녀 이름. 서버 `child_name`은 1~100자다.
+  static String? childName(String? value) {
     final input = value?.trim() ?? '';
     if (input.isEmpty) return '이름을 입력해 주세요.';
-    if (input.length > 20) return '이름은 20자까지 쓸 수 있어요.';
+    if (input.length > 100) return '이름은 100자까지 쓸 수 있어요.';
+    return null;
+  }
+
+  /// 자녀 나이. 선택 항목이라 비워둘 수 있고, 넣는다면 서버 범위(1~15)를 지켜야 한다.
+  static String? childAge(String? value) {
+    final input = value?.trim() ?? '';
+    if (input.isEmpty) return null;
+
+    final age = int.tryParse(input);
+    if (age == null) return '나이는 숫자로 입력해 주세요.';
+    if (age < 1 || age > 15) return '나이는 1살부터 15살까지 넣을 수 있어요.';
     return null;
   }
 

@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 
 import 'api_config.dart';
+import 'api_exception.dart';
+import 'api_response.dart';
 import 'token_storage.dart';
 
 /// 앱 전체가 공유하는 Dio 인스턴스.
@@ -101,24 +103,30 @@ class ApiClient {
         '/auth/refresh',
         data: {'refreshToken': refreshToken},
       );
-      final accessToken = response.data?['accessToken'] as String?;
-      if (accessToken == null) return false;
+      // 응답은 { success, message, data: { accessToken, refreshToken } } 봉투에 담겨 온다.
+      final data = ApiResponse.data(response);
+      final accessToken = data['accessToken'] as String?;
+      final rotated = data['refreshToken'] as String?;
+      if (accessToken == null || rotated == null) return false;
 
-      // 서버가 리프레시 토큰까지 새로 주면(rotation) 그것도 같이 저장한다.
+      // 서버는 리프레시 토큰을 항상 회전시킨다. 요청에 쓴 토큰은 이미 폐기됐으므로
+      // 새로 받은 것을 반드시 저장해야 다음 갱신이 된다.
       await _tokenStorage.saveTokens(
         accessToken: accessToken,
-        refreshToken: response.data?['refreshToken'] as String? ?? refreshToken,
+        refreshToken: rotated,
       );
       return true;
     } on DioException {
       return false;
+    } on ApiException {
+      return false;
     }
   }
 
-  bool _isAuthEndpoint(String path) =>
-      path.contains('/auth/login') ||
-      path.contains('/auth/signup') ||
-      path.contains('/auth/refresh');
+  /// `/api/auth/*`는 전부 토큰 없이 호출하는 엔드포인트라 401을 받아도 갱신 대상이 아니다.
+  /// (로그인 실패, 만료된 인증번호 등은 그냥 실패여야 한다)
+  /// 상대 경로(`/auth/login`)로도, 절대 URL로도 걸리도록 contains로 본다.
+  bool _isAuthEndpoint(String path) => path.contains('/auth/');
 
   static const _retriedKey = 'retried';
 }

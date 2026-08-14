@@ -55,7 +55,7 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
 
   /// 추가와 수정이 같은 입력 폼을 쓴다. [existing]이 없으면 추가 모드.
   Future<void> _openEditor({ChildProfile? existing}) async {
-    final draft = await showModalBottomSheet<_ProfileDraft>(
+    final draft = await showModalBottomSheet<ChildProfile>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppTheme.navyColor,
@@ -66,21 +66,24 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
     final service = context.read<ProfileService>();
     try {
       if (existing == null) {
-        await service.createProfile(
-          name: draft.name,
-          birthDate: draft.birthDate,
-        );
+        await service.createProfile(draft);
       } else {
-        await service.updateProfile(
-          ChildProfile(
-            id: existing.id,
-            name: draft.name,
-            birthDate: draft.birthDate,
-            avatarKey: existing.avatarKey,
-          ),
-        );
+        await service.updateProfile(draft);
       }
       await _loadProfiles();
+    } on ApiException catch (error) {
+      _showMessage(error.message);
+    }
+  }
+
+  /// 활성 프로필 전환은 전용 API로만 되고, 한 번에 한 명만 활성일 수 있다.
+  Future<void> _activateProfile(ChildProfile profile) async {
+    try {
+      await context.read<ProfileService>().activateProfile(
+        profile.childProfileId,
+      );
+      await _loadProfiles();
+      _showMessage('${profile.childName} 프로필로 전환했어요.');
     } on ApiException catch (error) {
       _showMessage(error.message);
     }
@@ -91,7 +94,7 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('프로필 삭제'),
-        content: Text('${profile.name} 프로필을 삭제할까요?\n학습 기록도 함께 사라져요.'),
+        content: Text('${profile.childName} 프로필을 삭제할까요?\n학습 기록도 함께 사라져요.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
@@ -107,7 +110,9 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
     if (confirmed != true || !mounted) return;
 
     try {
-      await context.read<ProfileService>().deleteProfile(profile.id);
+      await context.read<ProfileService>().deleteProfile(
+        profile.childProfileId,
+      );
       await _loadProfiles();
     } on ApiException catch (error) {
       _showMessage(error.message);
@@ -123,11 +128,12 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 서버 users에 이름 컬럼이 없어서 계정 식별은 이메일로 보여준다.
     final user = context.watch<AuthProvider>().user;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(user == null ? '자녀 프로필' : '${user.name}님의 자녀'),
+        title: Text(user == null ? '자녀 프로필' : user.email),
         actions: [
           IconButton(
             onPressed: () => context.read<AuthProvider>().logout(),
@@ -160,7 +166,9 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
     }
 
     if (_profiles.isEmpty) {
-      return const _CenteredMessage(message: '아직 등록된 자녀 프로필이 없어요.\n+ 버튼으로 추가해 주세요.');
+      return const _CenteredMessage(
+        message: '아직 등록된 자녀 프로필이 없어요.\n+ 버튼으로 추가해 주세요.',
+      );
     }
 
     return ListView.separated(
@@ -170,32 +178,50 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
       itemBuilder: (_, index) {
         final profile = _profiles[index];
         return Card(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: Colors.white.withValues(alpha: profile.isActive ? 0.16 : 0.08),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
+            side: profile.isActive
+                ? const BorderSide(color: AppTheme.yellowColor, width: 2)
+                : BorderSide.none,
           ),
           child: ListTile(
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 8,
             ),
-            leading: const CircleAvatar(
+            // 비활성 프로필을 누르면 활성으로 전환한다.
+            onTap: profile.isActive ? null : () => _activateProfile(profile),
+            leading: CircleAvatar(
               backgroundColor: AppTheme.yellowColor,
-              child: Icon(Icons.child_care, color: AppTheme.navyColor),
+              foregroundImage:
+                  (profile.profileImageUrl != null &&
+                      profile.profileImageUrl!.isNotEmpty)
+                  ? NetworkImage(profile.profileImageUrl!)
+                  : null,
+              child: const Icon(Icons.child_care, color: AppTheme.navyColor),
             ),
-            title: Text(
-              profile.name,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            subtitle: profile.birthDate == null
-                ? null
-                : Text(
-                    _formatDate(profile.birthDate!),
-                    style: const TextStyle(color: Colors.white70),
+            title: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    profile.childName,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
+                ),
+                if (profile.isActive) ...[
+                  const SizedBox(width: 8),
+                  const _ActiveBadge(),
+                ],
+              ],
+            ),
+            subtitle: Text(
+              _describe(profile),
+              style: const TextStyle(color: Colors.white70),
+            ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -218,15 +244,35 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
   }
 }
 
-String _formatDate(DateTime date) =>
-    '${date.year}년 ${date.month}월 ${date.day}일';
+/// 나이는 선택 항목이라 없을 수 있어서 학습 수준과 묶어 한 줄로 보여준다.
+String _describe(ChildProfile profile) {
+  final age = profile.age;
+  return age == null
+      ? profile.learningLevel.label
+      : '$age살 · ${profile.learningLevel.label}';
+}
 
-/// 편집 시트가 화면으로 돌려주는 입력값 묶음.
-class _ProfileDraft {
-  final String name;
-  final DateTime? birthDate;
+class _ActiveBadge extends StatelessWidget {
+  const _ActiveBadge();
 
-  const _ProfileDraft({required this.name, this.birthDate});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppTheme.yellowColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Text(
+        '사용 중',
+        style: TextStyle(
+          color: AppTheme.navyColor,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
 }
 
 class _ProfileEditorSheet extends StatefulWidget {
@@ -241,36 +287,47 @@ class _ProfileEditorSheet extends StatefulWidget {
 class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
-  DateTime? _birthDate;
+  late final TextEditingController _ageController;
+  late LearningLevel _learningLevel;
 
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.existing?.name ?? '');
-    _birthDate = widget.existing?.birthDate;
+    final existing = widget.existing;
+    _nameController = TextEditingController(text: existing?.childName ?? '');
+    _ageController = TextEditingController(
+      text: existing?.age?.toString() ?? '',
+    );
+    _learningLevel = existing?.learningLevel ?? LearningLevel.beginner;
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _ageController.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickBirthDate() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _birthDate ?? DateTime(now.year - 6),
-      firstDate: DateTime(now.year - 15),
-      lastDate: now,
-    );
-    if (picked != null) setState(() => _birthDate = picked);
   }
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
+
+    final age = int.tryParse(_ageController.text.trim());
+    final existing = widget.existing;
+
     Navigator.of(context).pop(
-      _ProfileDraft(name: _nameController.text.trim(), birthDate: _birthDate),
+      existing == null
+          ? ChildProfile(
+              // 서버가 채워주므로 요청에는 담기지 않는다.
+              childProfileId: 0,
+              childName: _nameController.text.trim(),
+              age: age,
+              learningLevel: _learningLevel,
+            )
+          : existing.copyWith(
+              childName: _nameController.text.trim(),
+              age: age,
+              learningLevel: _learningLevel,
+            ),
     );
   }
 
@@ -302,23 +359,19 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
             AppTextField(
               controller: _nameController,
               label: '이름',
-              validator: Validators.name,
+              validator: Validators.childName,
             ),
             const SizedBox(height: 16),
-            OutlinedButton.icon(
-              onPressed: _pickBirthDate,
-              icon: const Icon(Icons.cake_outlined, color: Colors.white70),
-              label: Text(
-                _birthDate == null ? '생년월일 선택 (선택)' : _formatDate(_birthDate!),
-                style: const TextStyle(color: Colors.white70),
-              ),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                side: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
+            AppTextField(
+              controller: _ageController,
+              label: '나이 (선택, 1~15)',
+              keyboardType: TextInputType.number,
+              validator: Validators.childAge,
+            ),
+            const SizedBox(height: 16),
+            _LearningLevelPicker(
+              value: _learningLevel,
+              onChanged: (level) => setState(() => _learningLevel = level),
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -331,6 +384,36 @@ class _ProfileEditorSheetState extends State<_ProfileEditorSheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _LearningLevelPicker extends StatelessWidget {
+  final LearningLevel value;
+  final ValueChanged<LearningLevel> onChanged;
+
+  const _LearningLevelPicker({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('학습 수준', style: TextStyle(color: Colors.white70)),
+        const SizedBox(height: 8),
+        SegmentedButton<LearningLevel>(
+          segments: LearningLevel.values
+              .map(
+                (level) => ButtonSegment<LearningLevel>(
+                  value: level,
+                  label: Text(level.label),
+                ),
+              )
+              .toList(),
+          selected: {value},
+          onSelectionChanged: (selection) => onChanged(selection.first),
+        ),
+      ],
     );
   }
 }

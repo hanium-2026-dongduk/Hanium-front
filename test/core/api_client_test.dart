@@ -70,14 +70,21 @@ void main() {
     await request.response.close();
   }
 
+  /// 백엔드는 모든 성공 응답을 { success, message, data } 봉투에 담아 준다.
+  Map<String, dynamic> envelope(Map<String, dynamic> data) => {
+    'success': true,
+    'message': '성공',
+    'data': data,
+  };
+
   test('저장된 액세스 토큰을 Bearer 헤더로 자동 첨부한다', () async {
     String? authorization;
     handler = (request) async {
       authorization = request.headers.value(HttpHeaders.authorizationHeader);
-      await respond(request, 200, {'ok': true});
+      await respond(request, 200, envelope({'ok': true}));
     };
 
-    await apiClient.dio.get<Map<String, dynamic>>('/protected');
+    await apiClient.dio.get<Map<String, dynamic>>('/children');
 
     expect(authorization, 'Bearer old-access-token');
   });
@@ -92,10 +99,14 @@ void main() {
         expect(jsonDecode(await utf8.decoder.bind(request).join()), {
           'refreshToken': 'old-refresh-token',
         });
-        await respond(request, 200, {
-          'accessToken': 'new-access-token',
-          'refreshToken': 'rotated-refresh-token',
-        });
+        await respond(
+          request,
+          200,
+          envelope({
+            'accessToken': 'new-access-token',
+            'refreshToken': 'rotated-refresh-token',
+          }),
+        );
         return;
       }
       protectedCalls++;
@@ -105,40 +116,45 @@ void main() {
       await respond(
         request,
         protectedCalls == 1 ? 401 : 200,
-        protectedCalls == 1 ? {'message': '만료'} : {'ok': true},
+        protectedCalls == 1
+            ? {'success': false, 'message': '만료'}
+            : envelope({'ok': true}),
       );
     };
 
-    final response = await apiClient.dio.get<Map<String, dynamic>>(
-      '/protected',
-    );
+    final response = await apiClient.dio.get<Map<String, dynamic>>('/children');
 
-    expect(response.data, {'ok': true});
+    expect(response.data?['data'], {'ok': true});
     expect(protectedCalls, 2);
     expect(refreshCalls, 1);
     expect(authorizations, [
       'Bearer old-access-token',
       'Bearer new-access-token',
     ]);
+    // 서버는 리프레시 토큰을 항상 회전시키므로 새 값을 반드시 저장해야 한다.
     expect(tokens['access_token'], 'new-access-token');
     expect(tokens['refresh_token'], 'rotated-refresh-token');
   });
 
-  test('리프레시 토큰이 회전되지 않으면 기존 리프레시 토큰을 보존한다', () async {
-    var protectedCalls = 0;
+  test('회전된 리프레시 토큰이 응답에 없으면 갱신 실패로 보고 세션을 끊는다', () async {
+    // 서버 계약상 refresh는 항상 두 토큰을 함께 준다. 하나라도 없으면 다음 갱신이
+    // 불가능하므로 성공으로 취급하면 안 된다.
+    var expiredCalls = 0;
+    apiClient.onSessionExpired = () async => expiredCalls++;
     handler = (request) async {
       if (request.uri.path == '/api/auth/refresh') {
-        await respond(request, 200, {'accessToken': 'new-access-token'});
+        await respond(request, 200, envelope({'accessToken': 'new-access-token'}));
         return;
       }
-      protectedCalls++;
-      await respond(request, protectedCalls == 1 ? 401 : 200);
+      await respond(request, 401, {'success': false, 'message': '만료'});
     };
 
-    await apiClient.dio.get<void>('/protected');
-
-    expect(tokens['access_token'], 'new-access-token');
-    expect(tokens['refresh_token'], 'old-refresh-token');
+    await expectLater(
+      apiClient.dio.get<void>('/children'),
+      throwsA(isA<DioException>()),
+    );
+    expect(tokens, isEmpty);
+    expect(expiredCalls, 1);
   });
 
   test('리프레시 실패 시 토큰을 삭제하고 만료 콜백 뒤 원래 401을 전파한다', () async {
@@ -146,18 +162,22 @@ void main() {
     apiClient.onSessionExpired = () async => expiredCalls++;
     handler = (request) async {
       if (request.uri.path == '/api/auth/refresh') {
-        await respond(request, 401, {'message': '리프레시 실패'});
+        await respond(request, 401, {
+          'success': false,
+          'message': '유효하지 않은 리프레시 토큰입니다.',
+        });
         return;
       }
-      await respond(request, 401, {'message': '원래 요청 실패'});
+      await respond(request, 401, {'success': false, 'message': '원래 요청 실패'});
     };
 
     await expectLater(
-      apiClient.dio.get<void>('/protected'),
+      apiClient.dio.get<void>('/children'),
       throwsA(
         isA<DioException>()
             .having((error) => error.response?.statusCode, '상태 코드', 401)
             .having((error) => error.response?.data, '원래 응답', {
+              'success': false,
               'message': '원래 요청 실패',
             }),
       ),
@@ -172,15 +192,22 @@ void main() {
     handler = (request) async {
       if (request.uri.path == '/api/auth/refresh') {
         refreshCalls++;
-        await respond(request, 200, {'accessToken': 'new-token'});
+        await respond(
+          request,
+          200,
+          envelope({
+            'accessToken': 'new-token',
+            'refreshToken': 'new-refresh-token',
+          }),
+        );
         return;
       }
       protectedCalls++;
-      await respond(request, 401, {'message': '계속 실패'});
+      await respond(request, 401, {'success': false, 'message': '계속 실패'});
     };
 
     await expectLater(
-      apiClient.dio.get<void>('/protected'),
+      apiClient.dio.get<void>('/children'),
       throwsA(isA<DioException>()),
     );
 
@@ -189,13 +216,20 @@ void main() {
   });
 
   test('인증 엔드포인트의 401은 리프레시하지 않고 바로 전파한다', () async {
+    // /api/auth/* 는 전부 토큰 없이 호출하는 경로라 갱신 대상이 아니다.
     final calls = <String, int>{};
     handler = (request) async {
       calls[request.uri.path] = (calls[request.uri.path] ?? 0) + 1;
-      await respond(request, 401, {'message': '인증 실패'});
+      await respond(request, 401, {'success': false, 'message': '인증 실패'});
     };
 
-    for (final path in ['/auth/login', '/auth/signup', '/auth/refresh']) {
+    const paths = [
+      '/auth/login',
+      '/auth/signup',
+      '/auth/refresh',
+      '/auth/email/verify',
+    ];
+    for (final path in paths) {
       await expectLater(
         apiClient.dio.post<void>(path),
         throwsA(isA<DioException>()),
@@ -206,6 +240,7 @@ void main() {
       '/api/auth/login': 1,
       '/api/auth/signup': 1,
       '/api/auth/refresh': 1,
+      '/api/auth/email/verify': 1,
     });
   });
 
@@ -218,7 +253,14 @@ void main() {
       if (request.uri.path == '/api/auth/refresh') {
         refreshCalls++;
         await bothInitialRequestsArrived.future;
-        await respond(request, 200, {'accessToken': 'shared-new-token'});
+        await respond(
+          request,
+          200,
+          envelope({
+            'accessToken': 'shared-new-token',
+            'refreshToken': 'shared-new-refresh',
+          }),
+        );
         return;
       }
 
@@ -227,23 +269,23 @@ void main() {
       if (attempts[path] == 1) {
         initialRequests++;
         if (initialRequests == 2) bothInitialRequestsArrived.complete();
-        await respond(request, 401);
+        await respond(request, 401, {'success': false, 'message': '만료'});
         return;
       }
       expect(
         request.headers.value(HttpHeaders.authorizationHeader),
         'Bearer shared-new-token',
       );
-      await respond(request, 200, {'path': path});
+      await respond(request, 200, envelope({'path': path}));
     };
 
     final responses = await Future.wait([
-      apiClient.dio.get<Map<String, dynamic>>('/first'),
-      apiClient.dio.get<Map<String, dynamic>>('/second'),
+      apiClient.dio.get<Map<String, dynamic>>('/children'),
+      apiClient.dio.get<Map<String, dynamic>>('/guardian/settings'),
     ]);
 
     expect(refreshCalls, 1);
-    expect(attempts, {'/api/first': 2, '/api/second': 2});
+    expect(attempts, {'/api/children': 2, '/api/guardian/settings': 2});
     expect(responses.map((response) => response.statusCode), everyElement(200));
   });
 }

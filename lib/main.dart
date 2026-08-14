@@ -33,6 +33,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   late final TokenStorage _tokenStorage;
   late final ApiClient _apiClient;
+  late final ProfileService _profileService;
   late final AuthProvider _authProvider;
 
   @override
@@ -42,8 +43,12 @@ class _MyAppState extends State<MyApp> {
     // 앱이 공유하는 객체들을 여기서 한 번만 만든다.
     _tokenStorage = TokenStorage();
     _apiClient = ApiClient(tokenStorage: _tokenStorage);
+    _profileService = ProfileService(_apiClient);
     _authProvider = AuthProvider(
       authService: AuthService(_apiClient),
+      // 백엔드에 "내 정보" 엔드포인트가 없어서, 저장된 토큰이 아직 유효한지
+      // 확인할 때 인증이 필요한 프로필 목록 API를 대신 쓴다.
+      profileService: _profileService,
       tokenStorage: _tokenStorage,
     );
 
@@ -68,7 +73,7 @@ class _MyAppState extends State<MyApp> {
         // 새 기능의 Service를 추가할 때는 여기에 한 줄씩 등록하면 된다.
         Provider<ApiClient>.value(value: _apiClient),
         ChangeNotifierProvider<AuthProvider>.value(value: _authProvider),
-        Provider<ProfileService>(create: (_) => ProfileService(_apiClient)),
+        Provider<ProfileService>.value(value: _profileService),
       ],
       child: MaterialApp(
         title: 'Magic Book',

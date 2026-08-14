@@ -11,6 +11,9 @@ class AppTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
 
+  /// 회원가입처럼 단계가 넘어가면 앞 단계 입력을 잠가야 할 때 쓴다.
+  final bool enabled;
+
   const AppTextField({
     super.key,
     required this.controller,
@@ -18,6 +21,7 @@ class AppTextField extends StatelessWidget {
     this.obscureText = false,
     this.keyboardType,
     this.validator,
+    this.enabled = true,
   });
 
   @override
@@ -27,6 +31,7 @@ class AppTextField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
+      enabled: enabled,
       style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         labelText: label,
@@ -40,6 +45,11 @@ class AppTextField extends StatelessWidget {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(color: AppTheme.yellowColor, width: 2),
+        ),
+        // 잠긴 입력창도 값은 읽혀야 하므로 테두리만 흐리게 둔다.
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
