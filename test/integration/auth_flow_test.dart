@@ -199,6 +199,136 @@ void main() {
     });
   });
 
+  group('비밀번호 재설정 (AU03)', () {
+    test('가입되지 않은 이메일이어도 200으로 같은 응답을 준다', () async {
+      // 계정 열거 방지. 실패로 처리하면 화면이 "없는 계정"을 알려주게 되므로 확인해둔다.
+      await expectLater(
+        authService.sendPasswordResetCode(freshEmail()),
+        completes,
+      );
+    });
+
+    test('인증번호와 새 비밀번호로 실제 비밀번호가 바뀐다', () async {
+      final email = await signUpFreshAccount();
+      const newPassword = 'Changed1!';
+
+      await authService.sendPasswordResetCode(email);
+      final code = await readVerificationCode(email);
+      await authService.resetPassword(
+        email: email,
+        code: code,
+        newPassword: newPassword,
+      );
+
+      // 옛 비밀번호는 막히고 새 비밀번호로는 들어가져야 한다.
+      await expectLater(
+        authService.login(email: email, password: password),
+        throwsA(isA<ApiException>()),
+      );
+      final result = await authService.login(
+        email: email,
+        password: newPassword,
+      );
+      expect(result.accessToken, isNotEmpty);
+    });
+
+    test('틀린 인증번호는 400이다', () async {
+      final email = await signUpFreshAccount();
+      await authService.sendPasswordResetCode(email);
+      await readVerificationCode(email);
+
+      await expectLater(
+        authService.resetPassword(
+          email: email,
+          code: '000000',
+          newPassword: 'Changed1!',
+        ),
+        throwsA(
+          isA<ApiException>().having((e) => e.statusCode, '상태 코드', 400),
+        ),
+      );
+    });
+
+    test('서버 비밀번호 정책에 못 미치면 400이다', () async {
+      final email = await signUpFreshAccount();
+      await authService.sendPasswordResetCode(email);
+      final code = await readVerificationCode(email);
+
+      await expectLater(
+        // 특수문자가 없다. 우리 Validators도 같은 이유로 막는다.
+        authService.resetPassword(
+          email: email,
+          code: code,
+          newPassword: 'abcdefg1',
+        ),
+        throwsA(
+          isA<ApiException>().having((e) => e.statusCode, '상태 코드', 400),
+        ),
+      );
+    });
+
+    test('한 번 쓴 인증번호는 재사용할 수 없다', () async {
+      final email = await signUpFreshAccount();
+      await authService.sendPasswordResetCode(email);
+      final code = await readVerificationCode(email);
+      await authService.resetPassword(
+        email: email,
+        code: code,
+        newPassword: 'Changed1!',
+      );
+
+      await expectLater(
+        authService.resetPassword(
+          email: email,
+          code: code,
+          newPassword: 'Another1!',
+        ),
+        throwsA(isA<ApiException>()),
+      );
+    });
+
+    test('재설정하면 기존에 로그인해 둔 세션이 끊긴다', () async {
+      final email = await signUpFreshAccount();
+      // 다른 기기에서 로그인해 둔 상황을 만든다.
+      final old = await authService.login(email: email, password: password);
+
+      await authService.sendPasswordResetCode(email);
+      final code = await readVerificationCode(email);
+      await authService.resetPassword(
+        email: email,
+        code: code,
+        newPassword: 'Changed1!',
+      );
+
+      // 그 기기의 리프레시 토큰은 폐기돼야 한다.
+      await expectLater(
+        Dio().post<Map<String, dynamic>>(
+          '$_baseUrl/auth/refresh',
+          data: {'refreshToken': old.refreshToken},
+        ),
+        throwsA(isA<DioException>()),
+      );
+    });
+
+    test('회원가입용 인증번호는 재설정에 쓸 수 없다', () async {
+      // 서버가 purpose로 코드를 분리해두었는지 확인한다.
+      final email = freshEmail();
+      await authService.sendSignupCode(email);
+      final signupCode = await readVerificationCode(email);
+
+      await expectLater(
+        authService.resetPassword(
+          email: email,
+          code: signupCode,
+          newPassword: 'Changed1!',
+        ),
+        throwsA(
+          isA<ApiException>().having((e) => e.statusCode, '상태 코드', 400),
+        ),
+      );
+    });
+  });
+
   group('토큰 회전과 401 재시도', () {
     test('만료된 액세스 토큰은 리프레시 후 원래 요청이 재시도되어 성공한다', () async {
       final email = await signUpFreshAccount();

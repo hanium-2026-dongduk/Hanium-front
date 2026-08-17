@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hanium_front/providers/auth_provider.dart';
 import 'package:hanium_front/screens/auth/login_screen.dart';
+import 'package:hanium_front/screens/auth/password_reset_screen.dart';
 import 'package:hanium_front/screens/auth/signup_screen.dart';
 import 'package:provider/provider.dart';
 
@@ -91,5 +92,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(SignupScreen), findsOneWidget);
+  });
+
+  testWidgets('비밀번호 찾기를 누르면 재설정 화면으로 간다', (tester) async {
+    await pumpLogin(tester);
+
+    await tester.tap(find.text('비밀번호를 잊으셨나요?'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PasswordResetScreen), findsOneWidget);
   });
 }

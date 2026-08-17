@@ -113,6 +113,29 @@ class AuthProvider extends ChangeNotifier {
     );
   }
 
+  /// P-AU-AU03 비밀번호 재설정 1단계. 재설정용 인증번호를 보낸다.
+  Future<bool> sendPasswordResetCode(String email) {
+    return _run(() => _authService.sendPasswordResetCode(email));
+  }
+
+  /// P-AU-AU03 비밀번호 재설정 2단계. 인증번호 확인과 변경이 한 번에 끝난다.
+  ///
+  /// 성공해도 로그인 상태로 만들지 않는다. 서버가 기존 세션을 전부 끊으므로
+  /// 새 비밀번호로 다시 로그인해야 한다.
+  Future<bool> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) {
+    return _run(
+      () => _authService.resetPassword(
+        email: email,
+        code: code,
+        newPassword: newPassword,
+      ),
+    );
+  }
+
   Future<void> logout() async {
     // 서버가 폐기할 대상을 알아야 하므로 지우기 전에 읽어둔다.
     final refreshToken = await _tokenStorage.readRefreshToken();
