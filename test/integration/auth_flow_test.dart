@@ -15,6 +15,7 @@ import 'package:hanium_front/models/child_profile.dart';
 import 'package:hanium_front/providers/auth_provider.dart';
 import 'package:hanium_front/services/auth_service.dart';
 import 'package:hanium_front/services/profile_service.dart';
+import 'package:hanium_front/services/reward_service.dart';
 import 'package:mocktail/mocktail.dart';
 
 /// 실제로 떠 있는 백엔드에 붙어서 계약이 맞는지 확인하는 통합 테스트.
@@ -503,6 +504,53 @@ void main() {
     test('토큰 없이 프로필을 조회하면 401이다', () async {
       await expectLater(
         profileService.fetchProfiles(),
+        throwsA(
+          isA<ApiException>().having((e) => e.isUnauthorized, '401 여부', isTrue),
+        ),
+      );
+    });
+  });
+
+  group('보상 포인트 (MN02)', () {
+    late RewardService rewardService;
+
+    setUp(() => rewardService = RewardService(apiClient));
+
+    /// 로그인하고 자녀 프로필 하나를 만든다. 포인트는 자녀별로 쌓인다.
+    Future<int> createChildAndLogin() async {
+      final email = await signUpFreshAccount();
+      final result = await authService.login(email: email, password: password);
+      await tokenStorage.saveTokens(
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
+      );
+      final profile = await profileService.createProfile(
+        const ChildProfile(childProfileId: 0, childName: '포인트받을아이'),
+      );
+      return profile.childProfileId;
+    }
+
+    test('새 자녀의 잔액은 0으로 시작한다', () async {
+      // 지갑이 없어도 서버가 만들어 준다.
+      final childId = await createChildAndLogin();
+
+      expect(await rewardService.fetchPointBalance(childId), 0);
+    });
+
+    test('내 자녀가 아닌 id로 조회하면 404다', () async {
+      await createChildAndLogin();
+
+      await expectLater(
+        rewardService.fetchPointBalance(999999),
+        throwsA(
+          isA<ApiException>().having((e) => e.statusCode, '상태 코드', 404),
+        ),
+      );
+    });
+
+    test('로그인하지 않으면 401이다', () async {
+      await expectLater(
+        rewardService.fetchPointBalance(1),
         throwsA(
           isA<ApiException>().having((e) => e.isUnauthorized, '401 여부', isTrue),
         ),

@@ -8,6 +8,7 @@ import 'providers/auth_provider.dart';
 import 'screens/auth_gate.dart';
 import 'services/auth_service.dart';
 import 'services/profile_service.dart';
+import 'services/reward_service.dart';
 import 'theme/theme.dart';
 
 Future<void> main() async {
@@ -74,6 +75,7 @@ class _MyAppState extends State<MyApp> {
         Provider<ApiClient>.value(value: _apiClient),
         ChangeNotifierProvider<AuthProvider>.value(value: _authProvider),
         Provider<ProfileService>.value(value: _profileService),
+        Provider<RewardService>(create: (_) => RewardService(_apiClient)),
       ],
       child: MaterialApp(
         title: 'Magic Book',
