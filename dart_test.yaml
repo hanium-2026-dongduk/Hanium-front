@@ -5,3 +5,6 @@
 tags:
   integration:
     skip: false
+  # 화면을 PNG로 뽑는 용도. --dart-define=SCREENSHOT=true 일 때만 실제로 찍는다.
+  screenshot:
+    skip: false
