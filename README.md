@@ -131,3 +131,37 @@ lib/
 **리프레시 토큰은 서버가 항상 회전시킨다.** 갱신에 쓴 토큰은 즉시 폐기되므로 응답으로 받은 새 토큰을 반드시 저장해야 한다.
 
 서버에 "내 정보" 엔드포인트가 없어서, 로그인할 때 받은 `user`를 토큰과 함께 저장해두고 앱 재시작 시 복원한다. 저장된 토큰이 아직 살아있는지는 `GET /api/children`을 한 번 불러 확인한다.
+
+## 테스트
+
+```bash
+flutter test          # 단위 테스트. 통합 테스트는 자동으로 건너뛴다
+```
+
+`test/integration/`은 **실제로 띄운 백엔드**에 붙어서 계약이 맞는지 확인한다. 단위 테스트는 "우리가 믿는 계약"만 검증하므로 그 믿음 자체가 틀리면 잡지 못한다 — 실제로 그런 일이 있었고, 그래서 이 테스트가 있다.
+
+돌리려면 백엔드와 MySQL이 필요하다.
+
+```bash
+# 1. DB
+docker run -d --name hanium-mysql \
+  -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=hanium \
+  -p 3306:3306 mysql:8
+
+# 2. 백엔드 (Hanium-back 저장소에서)
+npm install
+# .env 작성 후 스키마 생성 → 마이그레이션 → 기동
+node -e "require('dotenv').config();require('./src/models').sequelize.sync({force:true}).then(()=>process.exit())"
+npm run migrate
+node src/server.js
+
+# 3. 프론트 (이 저장소에서)
+flutter test test/integration/auth_flow_test.dart \
+  --dart-define=RUN_INTEGRATION=true \
+  --dart-define=API_BASE_URL=http://127.0.0.1:3000/api \
+  --dart-define=MAIL_SINK_FILE=/경로/last-code.txt
+```
+
+회원가입이 이메일 인증을 요구하므로 인증번호를 받을 방법이 필요하다. `MAIL_SINK_FILE`은 백엔드가 보낸 인증번호를 적어두는 파일 경로다. 로컬 SMTP 싱크를 쓰거나, 백엔드 DB의 `email_verifications` 테이블에서 직접 읽어 같은 형식(`{"to":"...","code":"123456"}`)으로 떨어뜨려도 된다.
+
+> **알려진 걸림돌**: `sequelize.sync()`로 만든 스키마에 마이그레이션 `0003`을 적용하면 `ERROR 1215 Cannot add foreign key constraint`가 난다. `sync()`가 `child_profiles.user_id`에 `ON UPDATE CASCADE` FK를 먼저 만드는데, MySQL은 STORED 생성 컬럼(`active_owner_id`)이 참조하는 컬럼에 그런 FK를 허용하지 않는다. 해당 FK를 지우고 `0003`을 적용한 뒤 `ON UPDATE RESTRICT`로 다시 걸면 된다. (백엔드 `0006`이 같은 이유로 이미 RESTRICT를 쓰고 있다)
