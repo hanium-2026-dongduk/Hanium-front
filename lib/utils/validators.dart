@@ -63,7 +63,23 @@ class Validators {
 
   /// 로그인 화면에서는 길이 규칙까지 볼 필요가 없어서 빈 값만 확인한다.
   static String? required(String? value, String label) {
-    if ((value?.trim() ?? '').isEmpty) return '$label을(를) 입력해 주세요.';
+    if ((value?.trim() ?? '').isEmpty) {
+      return '$label${objectParticle(label)} 입력해 주세요.';
+    }
     return null;
+  }
+
+  /// 앞 글자의 받침 유무에 맞는 목적격 조사를 고른다. ('이메일을', '비밀번호를')
+  ///
+  /// 한글 음절은 유니코드에서 (가 + 초성*588 + 중성*28 + 종성) 순으로 배열돼 있어,
+  /// 28로 나눈 나머지가 0이 아니면 받침이 있다.
+  static String objectParticle(String word) {
+    if (word.isEmpty) return '을';
+
+    final code = word.codeUnitAt(word.length - 1);
+    // 한글 음절 영역이 아니면(영문·숫자 등) 판단할 수 없으니 무난한 쪽으로 둔다.
+    if (code < 0xAC00 || code > 0xD7A3) return '을';
+
+    return (code - 0xAC00) % 28 == 0 ? '를' : '을';
   }
 }

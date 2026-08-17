@@ -66,8 +66,32 @@ void main() {
     });
   });
 
-  test('필수값 검증은 공백만 있는 입력을 거부하고 라벨을 메시지에 넣는다', () {
-    expect(Validators.required('  ', '닉네임'), '닉네임을(를) 입력해 주세요.');
-    expect(Validators.required(' 값 ', '닉네임'), isNull);
+  group('필수값 검증은', () {
+    test('공백만 있는 입력을 거부하고 라벨을 메시지에 넣는다', () {
+      expect(Validators.required('  ', '닉네임'), '닉네임을 입력해 주세요.');
+      expect(Validators.required(' 값 ', '닉네임'), isNull);
+    });
+
+    test('받침 유무에 맞는 조사를 붙인다', () {
+      // 받침 있음 → 을
+      expect(Validators.required('', '이메일'), '이메일을 입력해 주세요.');
+      // 받침 없음 → 를
+      expect(Validators.required('', '비밀번호'), '비밀번호를 입력해 주세요.');
+    });
+  });
+
+  group('목적격 조사는', () {
+    test('받침이 있으면 을, 없으면 를를 고른다', () {
+      expect(Validators.objectParticle('이메일'), '을');
+      expect(Validators.objectParticle('이름'), '을');
+      expect(Validators.objectParticle('비밀번호'), '를');
+      expect(Validators.objectParticle('나이'), '를');
+    });
+
+    test('한글이 아니거나 빈 문자열이면 을로 둔다', () {
+      expect(Validators.objectParticle(''), '을');
+      expect(Validators.objectParticle('email'), '을');
+      expect(Validators.objectParticle('123'), '을');
+    });
   });
 }

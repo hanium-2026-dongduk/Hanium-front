@@ -33,8 +33,8 @@ void main() {
 
     await tapLogin(tester);
 
-    expect(find.text('이메일을(를) 입력해 주세요.'), findsOneWidget);
-    expect(find.text('비밀번호을(를) 입력해 주세요.'), findsOneWidget);
+    expect(find.text('이메일을 입력해 주세요.'), findsOneWidget);
+    expect(find.text('비밀번호를 입력해 주세요.'), findsOneWidget);
     expect(auth.loginCalls, isEmpty);
   });
 
