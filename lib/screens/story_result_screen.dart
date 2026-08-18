@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:hanium_front/theme/theme.dart';
 import 'package:hanium_front/models/story_payload.dart';
 
 class StoryResultScreen extends StatefulWidget {
-  final StoryCreatePayload payload; // ✨ 최종 전달받은 상자
+  final StoryCreatePayload payload;
 
-  const StoryResultScreen({super.key, required this.payload}); // 생성자 수정
+  const StoryResultScreen({super.key, required this.payload});
 
   @override
   State<StoryResultScreen> createState() => _StoryResultScreenState();
@@ -21,17 +22,15 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
         actions: [
           TextButton(
             onPressed: () {
-              // 처음으로 돌아가기 기능 (모든 화면을 끄고 첫 화면으로)
               Navigator.popUntil(context, (route) => route.isFirst);
             },
-            child: const Text('처음으로', style: TextStyle(color: Color(0xFFF4DC08))),
+            child: const Text('처음으로', style: TextStyle(color: AppTheme.yellowColor)),
           ),
         ],
       ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 800),
-          // 에러 방지: 높이가 넘쳐도 스크롤되도록 감싸주기
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Row(
@@ -46,23 +45,18 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    // 이미지가 컨테이너 모서리 둥글기에 맞춰 잘리도록 ClipRRect 사용
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(20),
                       child: Image.network(
                         'https://picsum.photos/400/400',
                         fit: BoxFit.cover,
-                        // loadingBuilder 추가
                         loadingBuilder: (context, child, loadingProgress) {
-                          // 로딩이 끝나면 완성된 이미지 보여줌
                           if (loadingProgress == null) {
                             return child;
                           }
-                          // 로딩 중일 때는 가운데에 노란색 스피너를 돌림
                           return Center(
                             child: CircularProgressIndicator(
-                              color: const Color(0xFFF4DC08), // 테마의 노란색
-                              // 다운로드 진행률을 계산해서 스피너에 반영
+                              color: AppTheme.yellowColor,
                               value: loadingProgress.expectedTotalBytes != null
                                   ? loadingProgress.cumulativeBytesLoaded / (loadingProgress.expectedTotalBytes ?? 1)
                                   : null,
@@ -101,10 +95,9 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
                         style: TextStyle(fontSize: 18, color: Colors.white70),
                       ),
                       const SizedBox(height: 32),
-                      // Wrap 사용으로 좁은 화면에서는 버튼이 밑으로 떨어지도록 함
                       Wrap(
-                        spacing: 16, // 버튼 사이 가로 여백
-                        runSpacing: 12, // 줄바꿈 시 세로 여백
+                        spacing: 16,
+                        runSpacing: 12,
                         children: [
                           ElevatedButton.icon(
                             onPressed: () {
@@ -115,7 +108,6 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
                             icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
                             label: Text(_isPlaying ? '일시정지' : '영어로 듣기 (TTS)'),
                           ),
-                          // Wrap을 쓰면 SizedBox로 여백을 주지 않아도 spacing 속성이 알아서 띄워줘!
                           OutlinedButton.icon(
                             onPressed: () {
                               // 단어장 저장 로직
@@ -133,7 +125,7 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
 
                       const Text(
                         '다음에 어떤 일이 일어날까요?',
-                        style: TextStyle(color: Color(0xFFF4DC08), fontWeight: FontWeight.bold),
+                        style: TextStyle(color: AppTheme.yellowColor, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 12),
                       SizedBox(

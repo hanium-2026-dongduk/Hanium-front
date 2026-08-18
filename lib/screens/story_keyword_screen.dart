@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:hanium_front/theme/theme.dart';
 import 'story_result_screen.dart';
 import 'package:hanium_front/models/story_payload.dart';
 
 class StoryKeywordScreen extends StatefulWidget {
-  final StoryCreatePayload payload; // ✨ 상자 하나만 받기!
+  final StoryCreatePayload payload;
 
-  const StoryKeywordScreen({super.key, required this.payload}); // 생성자 수정
+  const StoryKeywordScreen({super.key, required this.payload});
 
   @override
   State<StoryKeywordScreen> createState() => _StoryKeywordScreenState();
@@ -43,7 +44,7 @@ class _StoryKeywordScreenState extends State<StoryKeywordScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline, color: Color(0xFFF4DC08)),
+                      const Icon(Icons.info_outline, color: AppTheme.yellowColor),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -92,12 +93,8 @@ class _StoryKeywordScreenState extends State<StoryKeywordScreen> {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
-                      // ✨ 마지막 키워드 데이터까지 상자에 담기
                       widget.payload.keyword = _keywordController.text;
 
-                      // 나중에 여기서 백엔드 API로 widget.payload.toJson()을 보내게 될 거야!
-
-                      // 결과 화면으로 꽉 찬 상자 들고 이동!
                       Navigator.push(
                         context,
                         MaterialPageRoute(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hanium_front/theme/theme.dart';
 import 'story_keyword_screen.dart';
 import 'package:hanium_front/models/story_payload.dart';
 
@@ -53,9 +54,6 @@ class _StorySettingScreenState extends State<StorySettingScreen> {
                 ),
                 const SizedBox(height: 60),
 
-                // ==========================================
-                // 다음 단계 (키워드 입력) 이동 버튼
-                // ==========================================
                 SizedBox(
                   width: double.infinity,
                   height: 60,
@@ -108,14 +106,14 @@ class _StorySettingScreenState extends State<StorySettingScreen> {
         children: [
           CircleAvatar(
             radius: 40,
-            backgroundColor: isSelected ? const Color(0xFFF4DC08) : Colors.white.withOpacity(0.1),
-            child: Icon(icon, size: 36, color: isSelected ? const Color(0xFF151628) : Colors.white),
+            backgroundColor: isSelected ? AppTheme.yellowColor : Colors.white.withOpacity(0.1),
+            child: Icon(icon, size: 36, color: isSelected ? AppTheme.navyColor : Colors.white),
           ),
           const SizedBox(height: 8),
           Text(
             label,
             style: TextStyle(
-              color: isSelected ? const Color(0xFFF4DC08) : Colors.white,
+              color: isSelected ? AppTheme.yellowColor : Colors.white,
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
