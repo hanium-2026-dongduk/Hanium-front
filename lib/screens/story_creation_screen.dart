@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hanium_front/theme/theme.dart';
 import 'package:hanium_front/screens/story_setting_screen.dart';
 import 'package:hanium_front/models/story_payload.dart';
 
@@ -107,11 +108,12 @@ class _StoryCreationScreenState extends State<StoryCreationScreen> {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
+                      // 이름 칸이 비어있는지 확인하는 유효성 검사
                       if (_nameController.text.trim().isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('캐릭터 이름을 입력해 주세요!')),
                         );
-                        return;
+                        return; // 값이 비어있다면 로직 멈추고 화면 이동 막음
                       }
 
                       // ✨ 1. 빈 택배 상자(DTO)를 하나 만들고, 지금까지 입력한 데이터를 담기
@@ -168,10 +170,10 @@ class _StoryCreationScreenState extends State<StoryCreationScreen> {
         });
       },
       child: Container(
-        height: 120, // 태블릿 화면 고려
+        height: 120, // 태블릿 화면 고려한 높이
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFFF4DC08)
+              ? AppTheme.yellowColor
               : Colors.white.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
@@ -184,7 +186,7 @@ class _StoryCreationScreenState extends State<StoryCreationScreen> {
             Icon(
               icon,
               size: 36,
-              color: isSelected ? const Color(0xFF151628) : Colors.white,
+              color: isSelected ? AppTheme.navyColor : Colors.white,
             ),
             const SizedBox(height: 12),
             Text(
@@ -193,7 +195,7 @@ class _StoryCreationScreenState extends State<StoryCreationScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: isSelected ? const Color(0xFF151628) : Colors.white,
+                color: isSelected ? AppTheme.navyColor : Colors.white,
               ),
             ),
           ],
@@ -225,7 +227,7 @@ class _StoryCreationScreenState extends State<StoryCreationScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFF4DC08), width: 2),
+          borderSide: const BorderSide(color: AppTheme.yellowColor, width: 2),
         ),
       ),
     );
@@ -240,7 +242,7 @@ class _StoryCreationScreenState extends State<StoryCreationScreen> {
         style: TextStyle(
           fontWeight: FontWeight.bold,
           // 선택되면 네이비 글씨, 선택 안 되면 흰색 글씨
-          color: isSelected ? const Color(0xFF151628) : Colors.white,
+          color: isSelected ? AppTheme.navyColor : Colors.white,
         ),
       ),
       selected: isSelected,
@@ -249,9 +251,9 @@ class _StoryCreationScreenState extends State<StoryCreationScreen> {
           if (selected) _selectedStyle = style;
         });
       },
-      selectedColor: const Color(0xFFF4DC08),
+      selectedColor: AppTheme.yellowColor,
       // 선택 시 노란색 배경
-      backgroundColor: const Color(0xFF151628),
+      backgroundColor: AppTheme.navyColor,
       // 선택 안 됐을 땐 네이비색 배경
       surfaceTintColor: Colors.transparent,
       // 플러터 기본 하얀색 오버레이 강제 제거

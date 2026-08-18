@@ -137,7 +137,7 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
               ],
             ),
           ),
-        ),
+        ),s
       ),
     );
   }

@@ -15,7 +15,9 @@ class MyApp extends StatelessWidget {
       title: 'Magic Book',
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
-      home: const StoryCreationScreen(), // 앱 시작점 변경
+
+      // ✨ 임시 테스트 코드를 지우고, 우리가 만든 스토리 생성 화면을 앱의 첫 화면으로 지정!
+      home: const StoryCreationScreen(),
     );
   }
 }
