@@ -41,12 +41,34 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
                   flex: 1,
                   child: Container(
                     height: 400,
+                    width: double.infinity,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(20),
-                      image: const DecorationImage(
-                        image: NetworkImage('https://picsum.photos/400/400'),
+                    ),
+                    // 이미지가 컨테이너 모서리 둥글기에 맞춰 잘리도록 ClipRRect 사용
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.network(
+                        'https://picsum.photos/400/400',
                         fit: BoxFit.cover,
+                        // loadingBuilder 추가
+                        loadingBuilder: (context, child, loadingProgress) {
+                          // 로딩이 끝나면 완성된 이미지 보여줌
+                          if (loadingProgress == null) {
+                            return child;
+                          }
+                          // 로딩 중일 때는 가운데에 노란색 스피너를 돌림
+                          return Center(
+                            child: CircularProgressIndicator(
+                              color: const Color(0xFFF4DC08), // 테마의 노란색
+                              // 다운로드 진행률을 계산해서 스피너에 반영
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded / (loadingProgress.expectedTotalBytes ?? 1)
+                                  : null,
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
