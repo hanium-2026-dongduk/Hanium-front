@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:hanium_front/models/story_payload.dart';
 
 class StoryResultScreen extends StatefulWidget {
-  const StoryResultScreen({super.key});
+  final StoryCreatePayload payload; // ✨ 최종 전달받은 상자
+
+  const StoryResultScreen({super.key, required this.payload}); // 생성자 수정
 
   @override
   State<StoryResultScreen> createState() => _StoryResultScreenState();

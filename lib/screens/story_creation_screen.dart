@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hanium_front/screens/story_setting_screen.dart';
+import 'package:hanium_front/models/story_payload.dart';
 
 class StoryCreationScreen extends StatefulWidget {
   const StoryCreationScreen({super.key});
@@ -106,11 +107,27 @@ class _StoryCreationScreenState extends State<StoryCreationScreen> {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
-                      // 버튼 클릭 시 스토리 설정 화면으로 이동
+                      if (_nameController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('캐릭터 이름을 입력해 주세요!')),
+                        );
+                        return;
+                      }
+
+                      // ✨ 1. 빈 택배 상자(DTO)를 하나 만들고, 지금까지 입력한 데이터를 담기
+                      final payload = StoryCreatePayload(
+                        characterMethod: _selectedMethod,
+                        characterName: _nameController.text,
+                        characterPersonality: _personalityController.text,
+                        characterDescription: _descriptionController.text,
+                        imageStyle: _selectedStyle,
+                      );
+
+                      // ✨ 2. 상자를 들고 다음 화면으로 이동!
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const StorySettingScreen(),
+                          builder: (context) => StorySettingScreen(payload: payload),
                         ),
                       );
                     },

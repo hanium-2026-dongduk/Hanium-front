@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'story_keyword_screen.dart';
+import 'package:hanium_front/models/story_payload.dart';
 
 class StorySettingScreen extends StatefulWidget {
-  const StorySettingScreen({super.key});
+  final StoryCreatePayload payload;
+
+  const StorySettingScreen({super.key, required this.payload});
 
   @override
   State<StorySettingScreen> createState() => _StorySettingScreenState();
@@ -58,14 +61,13 @@ class _StorySettingScreenState extends State<StorySettingScreen> {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
-                      // 선택한 장소와 사건 데이터를 2단계 화면으로 넘기며 이동
+                      widget.payload.location = _selectedLocation;
+                      widget.payload.event = _selectedEvent;
+
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => StoryKeywordScreen(
-                            location: _selectedLocation,
-                            event: _selectedEvent,
-                          ),
+                          builder: (context) => StoryKeywordScreen(payload: widget.payload),
                         ),
                       );
                     },
