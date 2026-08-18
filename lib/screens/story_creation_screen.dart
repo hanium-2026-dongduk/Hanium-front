@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hanium_front/theme/theme.dart';
-import 'story_setting_screen.dart';
+import 'package:hanium_front/screens/story_setting_screen.dart';
+import 'package:hanium_front/models/story_payload.dart';
 
 class StoryCreationScreen extends StatefulWidget {
   const StoryCreationScreen({super.key});
@@ -115,10 +116,20 @@ class _StoryCreationScreenState extends State<StoryCreationScreen> {
                         return; // 값이 비어있다면 로직 멈추고 화면 이동 막음
                       }
 
+                      // ✨ 1. 빈 택배 상자(DTO)를 하나 만들고, 지금까지 입력한 데이터를 담기
+                      final payload = StoryCreatePayload(
+                        characterMethod: _selectedMethod,
+                        characterName: _nameController.text,
+                        characterPersonality: _personalityController.text,
+                        characterDescription: _descriptionController.text,
+                        imageStyle: _selectedStyle,
+                      );
+
+                      // ✨ 2. 상자를 들고 다음 화면으로 이동!
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => const StorySettingScreen(),
+                          builder: (context) => StorySettingScreen(payload: payload),
                         ),
                       );
                     },
