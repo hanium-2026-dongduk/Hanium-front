@@ -5,24 +5,36 @@ class AppTheme {
   static const Color navyColor = Color(0xFF151628);
   static const Color yellowColor = Color(0xFFF4DC08);
 
+  /// 영문 기본 폰트. 한글 글리프가 없어서 아래 대체 폰트가 받쳐줘야 한다.
+  static const String _latinFont = 'Quicksand';
+
+  /// Quicksand에 없는 한글을 그릴 폰트.
+  static const List<String> _fallbackFonts = ['CookieRun'];
+
   static ThemeData get lightTheme {
     return ThemeData(
       primaryColor: navyColor,
       scaffoldBackgroundColor: navyColor,
 
-      // ✨ 앱 전체 기본 폰트를 쿠키런체로 완벽하게 통일!
-      fontFamily: 'CookieRun',
+      // ✨ 폰트 매직 시작 ✨
+      // 영문 기본 폰트로 Quicksand 지정
+      fontFamily: _latinFont,
+      // Quicksand에 없는 한글은 쿠키런체로 렌더링되도록 Fallback(대체) 지정
+      fontFamilyFallback: _fallbackFonts,
 
       appBarTheme: const AppBarTheme(
         backgroundColor: navyColor,
         elevation: 0,
         centerTitle: true,
-        // 앱바 제목 기본 스타일
+        // 지정하지 않으면 Material 3 기본값(거의 검정)이 잡혀서 네이비 배경 위에서
+        // 제목이 보이지 않는다.
+        foregroundColor: Colors.white,
         titleTextStyle: TextStyle(
-          color: Colors.white, // 기본 글씨 하얀색
+          color: Colors.white,
           fontSize: 22,
           fontWeight: FontWeight.bold,
-          fontFamily: 'CookieRun', // 제목 쿠키런체로 고정
+          fontFamily: _latinFont,
+          fontFamilyFallback: _fallbackFonts,
         ),
       ),
 
@@ -33,7 +45,10 @@ class AppTheme {
           textStyle: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold, // Bold 폰트 자동 적용
-            fontFamily: 'CookieRun', // 버튼 텍스트도 확실하게 쿠키런체 적용
+            // 버튼 textStyle은 ThemeData의 fontFamily/fallback을 물려받지 못해서,
+            // 여기서 다시 지정하지 않으면 한글이 시스템 폰트로 떨어진다.
+            fontFamily: _latinFont,
+            fontFamilyFallback: _fallbackFonts,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
