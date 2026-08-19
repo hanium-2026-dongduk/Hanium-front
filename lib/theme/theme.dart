@@ -31,7 +31,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         titleTextStyle: TextStyle(
           color: Colors.white,
-          fontSize: 20,
+          fontSize: 22,
           fontWeight: FontWeight.bold,
           fontFamily: _latinFont,
           fontFamilyFallback: _fallbackFonts,
@@ -44,7 +44,7 @@ class AppTheme {
           foregroundColor: navyColor,
           textStyle: const TextStyle(
             fontSize: 18,
-            fontWeight: FontWeight.bold, // Bold 폰트가 자동으로 적용돼
+            fontWeight: FontWeight.bold, // Bold 폰트 자동 적용
             // 버튼 textStyle은 ThemeData의 fontFamily/fallback을 물려받지 못해서,
             // 여기서 다시 지정하지 않으면 한글이 시스템 폰트로 떨어진다.
             fontFamily: _latinFont,
