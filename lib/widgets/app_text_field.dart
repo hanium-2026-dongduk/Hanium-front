@@ -14,6 +14,10 @@ class AppTextField extends StatelessWidget {
   /// 회원가입처럼 단계가 넘어가면 앞 단계 입력을 잠가야 할 때 쓴다.
   final bool enabled;
 
+  /// 입력창 아래에 붙는 안내. 비밀번호 규칙처럼 라벨에 넣기엔 긴 설명을 여기 둔다.
+  /// (라벨에 넣으면 좁은 기기에서 입력창 폭을 넘친다)
+  final String? helperText;
+
   const AppTextField({
     super.key,
     required this.controller,
@@ -22,6 +26,7 @@ class AppTextField extends StatelessWidget {
     this.keyboardType,
     this.validator,
     this.enabled = true,
+    this.helperText,
   });
 
   @override
@@ -36,6 +41,10 @@ class AppTextField extends StatelessWidget {
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white70),
+        helperText: helperText,
+        helperStyle: const TextStyle(color: Colors.white38, fontSize: 12),
+        // 안내가 길면 한 줄에서 잘리므로 두 줄까지 허용한다.
+        helperMaxLines: 2,
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.08),
         enabledBorder: OutlineInputBorder(

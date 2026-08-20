@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../theme/theme.dart';
 import '../../utils/validators.dart';
 import '../../widgets/app_text_field.dart';
+import 'password_reset_screen.dart';
 import 'signup_screen.dart';
 
 /// P-AU-AU01 로그인 화면.
@@ -120,11 +121,19 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(color: Colors.white70),
                     ),
                   ),
-                  // TODO(#6): 비밀번호 재설정(P-AU-AU03) 진입 버튼 자리.
-                  // 서버 API는 이미 있다.
-                  //   POST /auth/password/reset-request → 인증번호 발송
-                  //   PUT  /auth/password/reset         → 인증번호 + 새 비밀번호로 재설정
-                  // 아이디(이메일) 찾기는 요구사항에 없어 재설정 하나로 통합돼 있다.
+                  TextButton(
+                    onPressed: auth.isSubmitting
+                        ? null
+                        : () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const PasswordResetScreen(),
+                            ),
+                          ),
+                    child: const Text(
+                      '비밀번호를 잊으셨나요?',
+                      style: TextStyle(color: Colors.white38),
+                    ),
+                  ),
                 ],
               ),
             ),

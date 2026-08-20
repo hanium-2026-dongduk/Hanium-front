@@ -95,6 +95,42 @@ class AuthService {
     );
   }
 
+  /// P-AU-AU03 비밀번호 재설정 1단계. 재설정용 인증번호를 보낸다.
+  ///
+  /// 가입되지 않은 이메일이어도 **200으로 같은 응답**이 온다(계정 열거 방지).
+  /// 그러니 이 호출이 성공했다고 해서 계정이 있다는 뜻은 아니다.
+  /// 쿨다운(60초) 중이면 429다.
+  Future<void> sendPasswordResetCode(String email) async {
+    await _send(
+      () => _apiClient.dio.post<Map<String, dynamic>>(
+        '/auth/password/reset-request',
+        data: {'email': email},
+      ),
+    );
+  }
+
+  /// P-AU-AU03 비밀번호 재설정 2단계.
+  ///
+  /// 인증번호 확인과 비밀번호 변경이 한 번에 처리된다. 회원가입과 달리 검증만 하는
+  /// 단계가 따로 없다.
+  ///
+  /// 실패는 이유별로 상태 코드가 다르다.
+  ///   400 인증번호 불일치(또는 가입되지 않은 이메일) · 410 만료 · 429 5회 초과
+  ///
+  /// 성공하면 그 계정의 리프레시 토큰이 전부 폐기되므로 다른 기기도 다시 로그인해야 한다.
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    await _send(
+      () => _apiClient.dio.put<Map<String, dynamic>>(
+        '/auth/password/reset',
+        data: {'email': email, 'code': code, 'newPassword': newPassword},
+      ),
+    );
+  }
+
   /// POST /api/auth/logout — 서버가 해당 리프레시 토큰을 폐기한다.
   /// 바디에 refreshToken을 담아야 하며, 실패해도 앱은 어차피 로컬 토큰을 지우므로
   /// 예외를 삼킨다.

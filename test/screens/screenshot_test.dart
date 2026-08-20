@@ -10,6 +10,7 @@ import 'package:hanium_front/models/child_profile.dart';
 import 'package:hanium_front/models/user.dart';
 import 'package:hanium_front/providers/auth_provider.dart';
 import 'package:hanium_front/screens/auth/login_screen.dart';
+import 'package:hanium_front/screens/auth/password_reset_screen.dart';
 import 'package:hanium_front/screens/auth/profile_list_screen.dart';
 import 'package:hanium_front/screens/auth/signup_screen.dart';
 import 'package:hanium_front/services/profile_service.dart';
@@ -180,10 +181,30 @@ void main() {
     );
   });
 
+  testWidgets('비밀번호 재설정 1단계 - 이메일', (tester) async {
+    await capture(tester, '07-reset-step1', const PasswordResetScreen());
+  });
+
+  testWidgets('비밀번호 재설정 2단계 - 인증번호와 새 비밀번호', (tester) async {
+    await capture(
+      tester,
+      '08-reset-step2',
+      const PasswordResetScreen(),
+      afterPump: (tester) async {
+        await tester.enterText(
+          find.byType(TextFormField).first,
+          'user@example.com',
+        );
+        await tester.tap(find.widgetWithText(ElevatedButton, '인증번호 받기'));
+        await tester.pumpAndSettle();
+      },
+    );
+  });
+
   testWidgets('자녀 프로필 - 비어 있을 때', (tester) async {
     await capture(
       tester,
-      '07-profiles-empty',
+      '09-profiles-empty',
       const ProfileListScreen(),
       auth: FakeAuthProvider(status: AuthStatus.authenticated, user: user),
       extraProviders: [
@@ -195,7 +216,7 @@ void main() {
   testWidgets('자녀 프로필 - 목록', (tester) async {
     await capture(
       tester,
-      '08-profiles-list',
+      '10-profiles-list',
       const ProfileListScreen(),
       auth: FakeAuthProvider(status: AuthStatus.authenticated, user: user),
       extraProviders: [
@@ -223,7 +244,7 @@ void main() {
   testWidgets('자녀 프로필 - 추가 시트', (tester) async {
     await capture(
       tester,
-      '09-profile-editor',
+      '11-profile-editor',
       const ProfileListScreen(),
       auth: FakeAuthProvider(status: AuthStatus.authenticated, user: user),
       extraProviders: [
