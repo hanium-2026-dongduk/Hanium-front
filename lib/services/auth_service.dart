@@ -18,11 +18,23 @@ class AuthResult {
     required this.refreshToken,
   });
 
-  factory AuthResult.fromJson(Map<String, dynamic> json) => AuthResult(
-    user: User.fromJson(json['user'] as Map<String, dynamic>),
-    accessToken: json['accessToken'] as String,
-    refreshToken: json['refreshToken'] as String,
-  );
+  /// 서버 응답이 계약과 다르면 TypeError 대신 [ApiException]으로 알린다.
+  /// 화면이 잡아서 메시지를 보여줄 수 있어야 하기 때문이다.
+  factory AuthResult.fromJson(Map<String, dynamic> json) {
+    final user = json['user'];
+    final accessToken = json['accessToken'];
+    final refreshToken = json['refreshToken'];
+
+    if (user is! Map || accessToken is! String || refreshToken is! String) {
+      throw const ApiException(message: '로그인 응답을 이해할 수 없어요.');
+    }
+
+    return AuthResult(
+      user: User.fromJson(Map<String, dynamic>.from(user)),
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+    );
+  }
 }
 
 /// 인증 관련 API 호출만 담당한다. (P-AU-AU01 로그인, P-AU-AU02 회원가입)

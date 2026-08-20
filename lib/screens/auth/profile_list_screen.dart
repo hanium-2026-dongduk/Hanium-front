@@ -32,6 +32,8 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
   }
 
   Future<void> _loadProfiles() async {
+    // 다른 동작(삭제·전환) 뒤에 이어서 불리므로, 그 사이 화면이 사라졌을 수 있다.
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _errorMessage = null;

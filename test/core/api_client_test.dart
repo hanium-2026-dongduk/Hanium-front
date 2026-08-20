@@ -186,6 +186,35 @@ void main() {
     expect(expiredCalls, 1);
   });
 
+  test('갱신 중 서버에 닿지 못하면 토큰을 지우지 않고 세션을 유지한다', () async {
+    // 네트워크가 잠깐 끊긴 것과 서버가 토큰을 거절한 것은 다르다. 전자에서 토큰을
+    // 지우면 멀쩡한 세션이 로그아웃된다.
+    var expiredCalls = 0;
+    apiClient.onSessionExpired = () async => expiredCalls++;
+    handler = (request) async {
+      if (request.uri.path == '/api/auth/refresh') {
+        // 응답하지 않고 소켓을 끊어 네트워크 실패를 만든다.
+        final socket = await request.response.detachSocket(writeHeaders: false);
+        socket.destroy();
+        return;
+      }
+      await respond(request, 401, {'success': false, 'message': '만료'});
+    };
+
+    await expectLater(
+      apiClient.dio.get<void>('/children'),
+      throwsA(isA<DioException>()),
+    );
+
+    expect(tokens['access_token'], 'old-access-token');
+    expect(tokens['refresh_token'], 'old-refresh-token');
+    expect(expiredCalls, 0);
+  });
+
+  // 타임아웃도 같은 갈래(unreachable)로 분류되지만, 실제로 재현하려면 _refreshDio의
+  // 타임아웃(10초)만큼 기다려야 해서 테스트로 두지 않았다. 위의 연결 끊김 테스트가
+  // 같은 경로를 지난다.
+
   test('재시도한 요청도 401이면 다시 리프레시하지 않아 무한루프를 막는다', () async {
     var refreshCalls = 0;
     var protectedCalls = 0;
