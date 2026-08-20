@@ -5,6 +5,7 @@ import 'package:hanium_front/models/child_profile.dart';
 import 'package:hanium_front/models/user.dart';
 import 'package:hanium_front/providers/auth_provider.dart';
 import 'package:hanium_front/screens/auth/profile_list_screen.dart';
+import 'package:hanium_front/screens/settings/account_security_screen.dart';
 import 'package:hanium_front/services/profile_service.dart';
 import 'package:provider/provider.dart';
 
@@ -137,11 +138,7 @@ void main() {
     await pumpScreen(
       tester,
       _FakeProfileService([
-        const ChildProfile(
-          childProfileId: 1,
-          childName: '첫째',
-          isActive: true,
-        ),
+        const ChildProfile(childProfileId: 1, childName: '첫째', isActive: true),
         const ChildProfile(childProfileId: 2, childName: '둘째'),
       ]),
     );
@@ -211,13 +208,13 @@ void main() {
     expect(find.text('parent@example.com'), findsOneWidget);
   });
 
-  testWidgets('로그아웃 버튼은 Provider의 logout을 부른다', (tester) async {
+  testWidgets('계정 보안 버튼을 누르면 계정 보안 화면으로 이동한다', (tester) async {
     await pumpScreen(tester, _FakeProfileService([]));
 
-    await tester.tap(find.byTooltip('로그아웃'));
+    await tester.tap(find.byTooltip('계정 보안'));
     await tester.pumpAndSettle();
 
-    expect(auth.logoutCalls, 1);
+    expect(find.byType(AccountSecurityScreen), findsOneWidget);
   });
 
   testWidgets('추가 시트에서 입력한 값으로 프로필을 만든다', (tester) async {

@@ -8,8 +8,10 @@ import '../../services/profile_service.dart';
 import '../../theme/theme.dart';
 import '../../utils/validators.dart';
 import '../../widgets/app_text_field.dart';
+import '../settings/account_security_screen.dart';
 
-/// P-AU-AU04 자녀 프로필 관리 화면.
+/// P-AU-AU04 자녀 프로필 관리 화면. 활성 프로필 전환이 곧 P-PT-PD01(자녀 선택)이라
+/// 로그인 직후 이 화면이 그 역할도 겸한다(별도 선택 화면 없음).
 ///
 /// 목록은 이 화면 안에서만 쓰는 상태라 Provider까지 올리지 않고 StatefulWidget으로 둔다.
 /// 여러 화면이 프로필을 공유하게 되면 그때 ProfileProvider로 승격하면 된다.
@@ -136,9 +138,13 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
         title: Text(user == null ? '자녀 프로필' : user.email),
         actions: [
           IconButton(
-            onPressed: () => context.read<AuthProvider>().logout(),
-            icon: const Icon(Icons.logout),
-            tooltip: '로그아웃',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const AccountSecurityScreen(),
+              ),
+            ),
+            icon: const Icon(Icons.security_outlined),
+            tooltip: '계정 보안',
           ),
         ],
       ),
