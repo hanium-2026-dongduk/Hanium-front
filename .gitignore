@@ -44,6 +44,11 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Android/Gradle 빌드 산출물(예: android/build/reports/problems/problems-report.html).
+# 기존 `/build/` 규칙은 Flutter 최상위 build/만 가리고 android/ 하위는 놓쳐서 추가.
+/android/build/
+/android/.gradle/
+
 .env
 
 /.agents
