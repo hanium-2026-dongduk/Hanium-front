@@ -6,6 +6,7 @@ import 'core/api_client.dart';
 import 'core/token_storage.dart';
 import 'providers/auth_provider.dart';
 import 'screens/auth_gate.dart';
+import 'screens/main_screen.dart';
 import 'services/auth_service.dart';
 import 'services/profile_service.dart';
 import 'services/reward_service.dart';
@@ -81,7 +82,12 @@ class _MyAppState extends State<MyApp> {
         title: 'Magic Book',
         theme: AppTheme.lightTheme, // theme.dart에서 정의한 테마 적용
         debugShowCheckedModeBanner: false, // 우측 상단 디버그(Debug) 띠 제거
-        home: const AuthGate(),
+
+        // 로그인 기능 테스트시 주석 해제
+        // home: const AuthGate(),
+
+        // UI 작업 위해 메인 스크린 연결
+        home: const MainScreen(),
       ),
     );
   }
