@@ -62,9 +62,9 @@ class MainScreen extends StatelessWidget {
                   Expanded(child: _buildSquareCard('동화\n생성하기', Icons.auto_awesome, AppTheme.pastelBlue)),
                   const SizedBox(width: 16),
 
-                  // 노란색 학습하기 버튼 (네가 준 코드 반영!)
+                  // 노란색 학습하기 버튼
                   Expanded(
-                    // ✨ InkWell로 감싸서 클릭 이벤트(onTap) 추가!
+                    // 클릭 이벤트 추가
                     child: InkWell(
                       onTap: () {
                         Navigator.push(
@@ -137,7 +137,6 @@ class MainScreen extends StatelessWidget {
     );
   }
 
-  // ✨ 이중 터치 방지를 위해 내부 InkWell 제거 (부모 위젯의 InkWell이 작동하도록 Container로만 리턴)
   Widget _buildSquareCard(String title, IconData icon, Color bgColor) {
     return Container(
       height: 140,
