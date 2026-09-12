@@ -4,6 +4,10 @@ class AppTheme {
   // 컬러 팔레트
   static const Color navyColor = Color(0xFF151628);
   static const Color yellowColor = Color(0xFFF4DC08);
+  static const Color pastelGreen = Color(0xFFA5D6A7);
+  static const Color pastelBlue = Color(0xFF90CAF9);
+  static const Color pastelPink = Color(0xFFFFAB91);
+  static const Color pastelPurple = Color(0xFFB39DDB);
 
   /// 영문 기본 폰트. 한글 글리프가 없어서 아래 대체 폰트가 받쳐줘야 한다.
   static const String _latinFont = 'Quicksand';
