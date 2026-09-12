@@ -91,11 +91,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
             Expanded(
               child: GridView.builder(
                 padding: const EdgeInsets.all(24.0),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
+                // ✨ 화면 크기에 맞춰 카드 크기를 자동으로 예쁘게 조절해 주는 속성으로 변경!
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 220, // 카드 하나의 최대 너비 (이 크기에 맞춰 한 줄에 들어갈 개수가 자동 결정됨)
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 24,
-                  childAspectRatio: 0.75, // 카드 세로 비율을 조금 길게 조정 (책 표지 느낌)
+                  childAspectRatio: 0.75, // 책 표지 느낌의 가로세로 비율
                 ),
                 itemCount: displayedStories.length,
                 itemBuilder: (context, index) {
