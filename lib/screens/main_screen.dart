@@ -3,6 +3,8 @@ import 'package:hanium_front/theme/theme.dart';
 import 'package:hanium_front/screens/mission_screen.dart';
 import 'package:hanium_front/screens/attendance_screen.dart';
 import 'package:hanium_front/screens/voca_screen.dart';
+import 'package:hanium_front/screens/library_screen.dart';
+import 'package:hanium_front/screens/my_page_screen.dart';
 
 class MainScreen extends StatelessWidget {
   const MainScreen({super.key});
@@ -16,6 +18,16 @@ class MainScreen extends StatelessWidget {
         elevation: 0,
         title: const Text('✨ Magic Book', style: TextStyle(color: Colors.white)),
         actions: [
+          // 마이페이지 진입 버튼 추가
+          IconButton(
+            icon: const Icon(Icons.person, color: Colors.white),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const MyPageScreen()),
+              );
+            },
+          ),
           Container(
             margin: const EdgeInsets.only(right: 16, top: 10, bottom: 10),
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -49,7 +61,22 @@ class MainScreen extends StatelessWidget {
                 children: [
                   Expanded(child: _buildSquareCard('동화\n생성하기', Icons.auto_awesome, AppTheme.pastelBlue)),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildSquareCard('학습하기', Icons.menu_book, AppTheme.yellowColor)),
+
+                  // 노란색 학습하기 버튼 (네가 준 코드 반영!)
+                  Expanded(
+                    // ✨ InkWell로 감싸서 클릭 이벤트(onTap) 추가!
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LibraryScreen()),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(24),
+                      child: _buildSquareCard('학습하기', Icons.menu_book, AppTheme.yellowColor),
+                    ),
+                  ),
+
                   const SizedBox(width: 16),
                   Expanded(child: _buildSquareCard('등장인물\n관리하기', Icons.groups, AppTheme.pastelPink)),
                 ],
@@ -110,31 +137,28 @@ class MainScreen extends StatelessWidget {
     );
   }
 
+  // ✨ 이중 터치 방지를 위해 내부 InkWell 제거 (부모 위젯의 InkWell이 작동하도록 Container로만 리턴)
   Widget _buildSquareCard(String title, IconData icon, Color bgColor) {
-    return InkWell(
-      onTap: () {},
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        height: 140,
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(color: bgColor.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppTheme.navyColor, fontWeight: FontWeight.bold, fontSize: 16, height: 1.2),
-            ),
-            const SizedBox(height: 16),
-            Icon(icon, color: AppTheme.navyColor, size: 36),
-          ],
-        ),
+    return Container(
+      height: 140,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(color: bgColor.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppTheme.navyColor, fontWeight: FontWeight.bold, fontSize: 16, height: 1.2),
+          ),
+          const SizedBox(height: 16),
+          Icon(icon, color: AppTheme.navyColor, size: 36),
+        ],
       ),
     );
   }
