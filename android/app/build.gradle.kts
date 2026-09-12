@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.Hanium.hanium_front"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 35
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
