@@ -87,7 +87,22 @@ class _MainScreenState extends State<MainScreen> {
                 children: [
                   Expanded(child: _buildSquareCard('동화\n생성하기', Icons.auto_awesome, AppTheme.pastelBlue)),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildSquareCard('학습하기', Icons.menu_book, AppTheme.yellowColor)),
+
+                  // 노란색 학습하기 버튼
+                  Expanded(
+                    // 클릭 이벤트 추가
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LibraryScreen()),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(24),
+                      child: _buildSquareCard('학습하기', Icons.menu_book, AppTheme.yellowColor),
+                    ),
+                  ),
+
                   const SizedBox(width: 16),
                   Expanded(child: _buildSquareCard('등장인물\n관리하기', Icons.groups, AppTheme.pastelPink)),
                 ],

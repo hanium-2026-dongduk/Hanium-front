@@ -8,6 +8,12 @@ class AppTheme {
   static const Color pastelPink = Color(0xFFFFAB91);
   static const Color pastelPurple = Color(0xFFB39DDB);
 
+  /// 영문 기본 폰트. 한글 글리프가 없어서 아래 대체 폰트가 받쳐줘야 한다.
+  static const String _latinFont = 'Quicksand';
+
+  /// Quicksand에 없는 한글을 그릴 폰트.
+  static const List<String> _fallbackFonts = ['CookieRun'];
+
   static ThemeData get lightTheme {
     return ThemeData(
       primaryColor: navyColor,
