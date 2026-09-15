@@ -2,14 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hanium_front/core/api_exception.dart';
 import 'package:hanium_front/models/child_profile.dart';
+import 'package:hanium_front/models/page_result.dart';
+import 'package:hanium_front/models/reward_detail.dart';
+import 'package:hanium_front/models/reward_history_entry.dart';
 import 'package:hanium_front/models/user.dart';
+import 'package:hanium_front/providers/active_child_provider.dart';
 import 'package:hanium_front/providers/auth_provider.dart';
+import 'package:hanium_front/providers/reward_provider.dart';
 import 'package:hanium_front/screens/auth/profile_list_screen.dart';
+import 'package:hanium_front/screens/main_screen.dart';
 import 'package:hanium_front/screens/settings/account_security_screen.dart';
 import 'package:hanium_front/services/profile_service.dart';
+import 'package:hanium_front/services/reward_service.dart';
 import 'package:provider/provider.dart';
 
 import '../support/fake_auth_provider.dart';
+
+/// 프로필을 고르면 메인 화면으로 넘어가므로, 그 화면이 요구하는 Provider들도
+/// 최소한으로 채워둔다. (ActiveChildProvider, RewardProvider)
+class _FakeRewardService implements RewardService {
+  @override
+  Future<int> fetchPointBalance(int childProfileId) async => 0;
+
+  @override
+  Future<RewardDetail> fetchDetail(int childProfileId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<PageResult<RewardHistoryEntry>> fetchHistory(
+    int childProfileId, {
+    int page = 1,
+    int limit = 20,
+    String? reason,
+  }) => throw UnimplementedError();
+}
 
 /// 자녀 프로필 화면(P-AU-AU04)이 목록·활성 전환·삭제를 제대로 다루는지 본다.
 /// 통신은 하지 않고 ProfileService 대신 가짜를 끼운다.
@@ -92,6 +118,14 @@ void main() {
         providers: [
           ChangeNotifierProvider<AuthProvider>.value(value: auth),
           Provider<ProfileService>.value(value: service),
+          // 프로필을 고르면 MainScreen으로 넘어가는데, 그 화면이 읽는
+          // Provider들이다. 실제로 쓰이지는 않아도 없으면 화면 생성이 죽는다.
+          ChangeNotifierProvider<ActiveChildProvider>(
+            create: (_) => ActiveChildProvider(profileService: service),
+          ),
+          ChangeNotifierProvider<RewardProvider>(
+            create: (_) => RewardProvider(rewardService: _FakeRewardService()),
+          ),
         ],
         child: const MaterialApp(home: ProfileListScreen()),
       ),
@@ -146,7 +180,7 @@ void main() {
     expect(find.text('사용 중'), findsOneWidget);
   });
 
-  testWidgets('비활성 프로필을 누르면 활성으로 전환한다', (tester) async {
+  testWidgets('비활성 프로필을 누르면 활성으로 전환하고 메인 화면으로 들어간다', (tester) async {
     final service = _FakeProfileService([
       const ChildProfile(childProfileId: 1, childName: '첫째', isActive: true),
       const ChildProfile(childProfileId: 2, childName: '둘째'),
@@ -157,9 +191,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(service.activatedIds, [2]);
+    expect(find.byType(MainScreen), findsOneWidget);
   });
 
-  testWidgets('이미 활성인 프로필을 눌러도 전환을 요청하지 않는다', (tester) async {
+  testWidgets('이미 활성인 프로필을 눌러도 전환을 요청하지 않고 메인 화면으로 들어간다', (tester) async {
     final service = _FakeProfileService([
       const ChildProfile(childProfileId: 1, childName: '첫째', isActive: true),
     ]);
@@ -169,6 +204,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(service.activatedIds, isEmpty);
+    expect(find.byType(MainScreen), findsOneWidget);
   });
 
   testWidgets('삭제는 확인을 받고 나서 실행한다', (tester) async {

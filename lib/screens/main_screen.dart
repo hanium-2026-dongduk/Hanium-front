@@ -1,16 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:hanium_front/theme/theme.dart';
 import 'package:hanium_front/screens/mission_screen.dart';
 import 'package:hanium_front/screens/attendance_screen.dart';
 import 'package:hanium_front/screens/voca_screen.dart';
-import 'package:hanium_front/screens/library_screen.dart';
-import 'package:hanium_front/screens/my_page_screen.dart';
+import 'package:hanium_front/screens/reward_history_screen.dart';
+import 'package:hanium_front/providers/active_child_provider.dart';
+import 'package:hanium_front/providers/reward_provider.dart';
 
-class MainScreen extends StatelessWidget {
+class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
 
   @override
+  State<MainScreen> createState() => _MainScreenState();
+}
+
+class _MainScreenState extends State<MainScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshPoints());
+  }
+
+  Future<void> _refreshPoints() async {
+    final childProfileId = context.read<ActiveChildProvider>().childProfileId;
+    if (childProfileId == null) return;
+    await context.read<RewardProvider>().refresh(childProfileId);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final points = context.watch<RewardProvider>().points;
+
     return Scaffold(
       backgroundColor: AppTheme.navyColor,
       appBar: AppBar(
@@ -18,32 +39,37 @@ class MainScreen extends StatelessWidget {
         elevation: 0,
         title: const Text('✨ Magic Book', style: TextStyle(color: Colors.white)),
         actions: [
-          // 마이페이지 진입 버튼 추가
-          IconButton(
-            icon: const Icon(Icons.person, color: Colors.white),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const MyPageScreen()),
-              );
-            },
-          ),
-          Container(
-            margin: const EdgeInsets.only(right: 16, top: 10, bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(30),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 6, offset: const Offset(0, 3)),
-              ],
+          InkWell(
+            borderRadius: BorderRadius.circular(30),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const RewardHistoryScreen()),
             ),
-            child: const Row(
-              children: [
-                Icon(Icons.favorite, color: AppTheme.pastelPurple, size: 22),
-                SizedBox(width: 8),
-                Text('120', style: TextStyle(color: AppTheme.navyColor, fontWeight: FontWeight.bold, fontSize: 16)),
-              ],
+            // 알약 모양 배지 자체는 얇지만, 터치 영역은 아동 UX 기준(48dp)을
+            // 만족하도록 보이지 않는 여백으로 감싼다.
+            child: SizedBox(
+              height: 48,
+              child: Center(
+                child: Container(
+                  margin: const EdgeInsets.only(right: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 6, offset: const Offset(0, 3)),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.favorite, color: AppTheme.pastelPurple, size: 22),
+                      const SizedBox(width: 8),
+                      Text('$points', style: const TextStyle(color: AppTheme.navyColor, fontWeight: FontWeight.bold, fontSize: 16)),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -138,26 +164,30 @@ class MainScreen extends StatelessWidget {
   }
 
   Widget _buildSquareCard(String title, IconData icon, Color bgColor) {
-    return Container(
-      height: 140,
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(color: bgColor.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6)),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppTheme.navyColor, fontWeight: FontWeight.bold, fontSize: 16, height: 1.2),
-          ),
-          const SizedBox(height: 16),
-          Icon(icon, color: AppTheme.navyColor, size: 36),
-        ],
+    return InkWell(
+      onTap: () {},
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        height: 140,
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(color: bgColor.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6)),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppTheme.navyColor, fontWeight: FontWeight.bold, fontSize: 16, height: 1.2),
+            ),
+            const SizedBox(height: 16),
+            Icon(icon, color: AppTheme.navyColor, size: 36),
+          ],
+        ),
       ),
     );
   }

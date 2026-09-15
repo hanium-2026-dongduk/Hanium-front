@@ -3,11 +3,15 @@ import 'package:provider/provider.dart';
 
 import '../../core/api_exception.dart';
 import '../../models/child_profile.dart';
+import '../../providers/active_child_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/profile_service.dart';
 import '../../theme/theme.dart';
 import '../../utils/validators.dart';
 import '../../widgets/app_text_field.dart';
+import '../../widgets/async_state_view.dart';
+import '../../widgets/confirm_dialog.dart';
+import '../main_screen.dart';
 import '../settings/account_security_screen.dart';
 
 /// P-AU-AU04 자녀 프로필 관리 화면. 활성 프로필 전환이 곧 P-PT-PD01(자녀 선택)이라
@@ -81,37 +85,34 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
   }
 
   /// 활성 프로필 전환은 전용 API로만 되고, 한 번에 한 명만 활성일 수 있다.
+  /// 전환에 성공하면 곧바로 메인 화면으로 들어간다.
   Future<void> _activateProfile(ChildProfile profile) async {
     try {
-      await context.read<ProfileService>().activateProfile(
+      final activated = await context.read<ProfileService>().activateProfile(
         profile.childProfileId,
       );
-      await _loadProfiles();
-      _showMessage('${profile.childName} 프로필로 전환했어요.');
+      if (!mounted) return;
+      _enterMainScreen(activated);
     } on ApiException catch (error) {
       _showMessage(error.message);
     }
   }
 
-  Future<void> _deleteProfile(ChildProfile profile) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('프로필 삭제'),
-        content: Text('${profile.childName} 프로필을 삭제할까요?\n학습 기록도 함께 사라져요.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('삭제', style: TextStyle(color: Colors.redAccent)),
-          ),
-        ],
-      ),
+  /// 이미 활성인 프로필을 다시 탭했을 때도 같은 경로로 메인 화면에 들어간다.
+  void _enterMainScreen(ChildProfile profile) {
+    context.read<ActiveChildProvider>().setActiveChild(profile);
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(builder: (_) => const MainScreen()),
     );
-    if (confirmed != true || !mounted) return;
+  }
+
+  Future<void> _deleteProfile(ChildProfile profile) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: '프로필 삭제',
+      content: '${profile.childName} 프로필을 삭제할까요?\n학습 기록도 함께 사라져요.',
+    );
+    if (!confirmed || !mounted) return;
 
     try {
       await context.read<ProfileService>().deleteProfile(
@@ -161,24 +162,17 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
   }
 
   Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    return AsyncStateView(
+      isLoading: _isLoading,
+      errorMessage: _errorMessage,
+      onRetry: _loadProfiles,
+      isEmpty: _profiles.isEmpty,
+      emptyMessage: '아직 등록된 자녀 프로필이 없어요.\n+ 버튼으로 추가해 주세요.',
+      contentBuilder: (_) => _buildProfileList(),
+    );
+  }
 
-    if (_errorMessage != null) {
-      return _CenteredMessage(
-        message: _errorMessage!,
-        actionLabel: '다시 시도',
-        onAction: _loadProfiles,
-      );
-    }
-
-    if (_profiles.isEmpty) {
-      return const _CenteredMessage(
-        message: '아직 등록된 자녀 프로필이 없어요.\n+ 버튼으로 추가해 주세요.',
-      );
-    }
-
+  Widget _buildProfileList() {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: _profiles.length,
@@ -199,7 +193,10 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
               vertical: 8,
             ),
             // 비활성 프로필을 누르면 활성으로 전환한다.
-            onTap: profile.isActive ? null : () => _activateProfile(profile),
+            // 이미 활성인 프로필을 탭하면 바로 메인 화면으로, 아니면 먼저 전환한다.
+            onTap: profile.isActive
+                ? () => _enterMainScreen(profile)
+                : () => _activateProfile(profile),
             leading: CircleAvatar(
               backgroundColor: AppTheme.yellowColor,
               foregroundImage:
@@ -426,49 +423,3 @@ class _LearningLevelPicker extends StatelessWidget {
   }
 }
 
-class _CenteredMessage extends StatelessWidget {
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  const _CenteredMessage({
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // RefreshIndicator가 동작하려면 스크롤 가능한 자식이 있어야 한다.
-    return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(minHeight: constraints.maxHeight),
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    message,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-                  if (actionLabel != null) ...[
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: onAction,
-                      child: Text(actionLabel!),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}

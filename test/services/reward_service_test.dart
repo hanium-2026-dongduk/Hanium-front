@@ -158,4 +158,78 @@ void main() {
 
     expect(authorization, 'Bearer access-token');
   });
+
+  test('상세 조회는 /rewards/:childId를 부르고 레벨·연속출석을 함께 읽는다', () async {
+    String? path;
+    handler = (request) async {
+      path = request.uri.path;
+      await respond(request, 200, {
+        'success': true,
+        'data': {
+          'childProfileId': 7,
+          'points': 340,
+          'level': 3,
+          'streakDays': 4,
+          'levelProgress': {
+            'currentLevelFloor': 300,
+            'nextLevelAt': 600,
+            'pointsToNextLevel': 260,
+          },
+        },
+      });
+    };
+
+    final detail = await rewardService.fetchDetail(7);
+
+    expect(path, '/api/rewards/7');
+    expect(detail.level, 3);
+    expect(detail.levelProgress?.pointsToNextLevel, 260);
+  });
+
+  test('이력 조회는 page/limit/reason을 쿼리로 보내고 items를 최신순으로 읽는다', () async {
+    Uri? uri;
+    handler = (request) async {
+      uri = request.uri;
+      await respond(request, 200, {
+        'success': true,
+        'data': {
+          'items': [
+            {
+              'points': 20,
+              'reason': 'mission_reward',
+              'balanceAfter': 340,
+              'createdAt': '2026-08-12T01:23:45.000Z',
+              'metadata': {'missionType': 'story_read'},
+            },
+          ],
+          'pagination': {'page': 1, 'limit': 20, 'totalCount': 37, 'totalPages': 2},
+        },
+      });
+    };
+
+    final result = await rewardService.fetchHistory(7, page: 1, limit: 20, reason: 'mission_reward');
+
+    expect(uri?.path, '/api/rewards/7/history');
+    expect(uri?.queryParameters, {'page': '1', 'limit': '20', 'reason': 'mission_reward'});
+    expect(result.items.single.points, 20);
+    expect(result.hasMore, isTrue);
+  });
+
+  test('reason을 생략하면 쿼리에 담지 않는다', () async {
+    Uri? uri;
+    handler = (request) async {
+      uri = request.uri;
+      await respond(request, 200, {
+        'success': true,
+        'data': {
+          'items': <Map<String, dynamic>>[],
+          'pagination': {'page': 1, 'limit': 20, 'totalCount': 0, 'totalPages': 1},
+        },
+      });
+    };
+
+    await rewardService.fetchHistory(7);
+
+    expect(uri?.queryParameters.containsKey('reason'), isFalse);
+  });
 }

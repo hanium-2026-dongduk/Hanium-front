@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:hanium_front/theme/theme.dart';
+import 'package:provider/provider.dart';
 
+import '../core/api_exception.dart';
+import '../models/attendance_month.dart';
+import '../providers/active_child_provider.dart';
+import '../providers/reward_provider.dart';
+import '../services/attendance_service.dart';
+import '../theme/theme.dart';
+import '../widgets/async_state_view.dart';
+
+/// 출석 현황 화면. (P-GM-RW02 연속 학습 보상)
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
 
@@ -9,18 +18,104 @@ class AttendanceScreen extends StatefulWidget {
 }
 
 class _AttendanceScreenState extends State<AttendanceScreen> {
-  // 임시 출석 데이터 (0: 결석, 1: 출석완료, 2: 오늘(미출석), 3: 미래)
-  final List<Map<String, dynamic>> _weeklyAttendance = [
-    {'day': '월', 'status': 1},
-    {'day': '화', 'status': 1},
-    {'day': '수', 'status': 2}, // 오늘!
-    {'day': '목', 'status': 3},
-    {'day': '금', 'status': 3},
-    {'day': '토', 'status': 3},
-    {'day': '일', 'status': 3},
-  ];
+  static const _weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
 
-  int _totalAttendance = 12; // 이번 달 총 출석 일수
+  AttendanceMonth? _month;
+  bool _isLoading = true;
+  bool _isChecking = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  int? get _childProfileId => context.read<ActiveChildProvider>().childProfileId;
+
+  Future<void> _load() async {
+    final childProfileId = _childProfileId;
+    if (childProfileId == null) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = '먼저 자녀 프로필을 선택해 주세요.';
+      });
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final month = await context.read<AttendanceService>().fetchMonthly(childProfileId);
+      if (!mounted) return;
+      setState(() {
+        _month = month;
+        _isLoading = false;
+      });
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.message;
+        _isLoading = false;
+      });
+    }
+  }
+
+  /// 도장 찍기. 서버가 멱등하게 처리하므로("같은 날 몇 번 호출해도 안전"),
+  /// 이미 출석한 날에도 다시 눌러 최신 상태를 다시 받아오는 것 자체는 안전하다.
+  Future<void> _checkIn() async {
+    final childProfileId = _childProfileId;
+    if (childProfileId == null || _isChecking) return;
+
+    setState(() => _isChecking = true);
+    try {
+      final result = await context.read<AttendanceService>().checkIn(childProfileId);
+      await _load();
+      if (!mounted) return;
+
+      if (result.pointsEarned > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✨ 출석 도장 쾅! 마법 토큰 ${result.pointsEarned}개를 받았어요!'),
+            backgroundColor: AppTheme.pastelGreen,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else if (result.alreadyChecked) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('오늘은 이미 출석했어요. 내일 또 만나요!'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      if (result.badgesAwarded.isNotEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('🏅 새 배지를 획득했어요! (${result.badgesAwarded.join(', ')})'),
+            backgroundColor: AppTheme.pastelPurple,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      // 포인트가 바뀌었을 수 있으므로 메인 화면 토큰 표시도 갱신한다.
+      if (mounted) {
+        await context.read<RewardProvider>().refresh(childProfileId);
+      }
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+    } finally {
+      if (mounted) setState(() => _isChecking = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,137 +128,171 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 10),
-              const Text(
-                '매일매일 출석하고\n비밀 선물을 받아보세요!',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 40),
-
-              // ==========================================
-              // 1. 주간 출석 스탬프 영역
-              // ==========================================
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Column(
-                  children: [
-                    const Text(
-                      '이번 주 출석 지도 🗺️',
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 24),
-                    // 요일과 스탬프를 가로로 쫙 배치
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: _weeklyAttendance.map((data) => _buildStamp(data)).toList(),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // ==========================================
-              // 2. 출석 도장 찍기 버튼 (오늘 출석 안 했을 때만 활성화)
-              // ==========================================
-              _buildAttendanceButton(),
-              const SizedBox(height: 40),
-
-              // ==========================================
-              // 3. 누적 출석 보상 영역
-              // ==========================================
-              const Text(
-                '이번 달 누적 달성도',
-                style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppTheme.pastelPurple.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppTheme.pastelPurple.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: const BoxDecoration(color: AppTheme.pastelPurple, shape: BoxShape.circle),
-                      child: const Icon(Icons.redeem, color: AppTheme.navyColor, size: 28),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('다음 보상까지 3일 남았어요!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: LinearProgressIndicator(
-                              value: _totalAttendance / 15, // 15일 보상 기준
-                              minHeight: 8,
-                              backgroundColor: Colors.white.withOpacity(0.1),
-                              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.pastelPurple),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text('현재 $_totalAttendance일 / 15일', style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: AsyncStateView(
+            isLoading: _isLoading,
+            errorMessage: _errorMessage,
+            onRetry: _load,
+            isEmpty: _month == null,
+            emptyMessage: '출석 정보를 불러오지 못했어요.',
+            contentBuilder: (_) => _buildContent(_month!),
           ),
         ),
       ),
     );
   }
 
-  // --- UI 컴포넌트: 개별 스탬프 ---
-  Widget _buildStamp(Map<String, dynamic> data) {
-    String day = data['day'];
-    int status = data['status'];
+  Widget _buildContent(AttendanceMonth month) {
+    final today = DateTime.now();
+    final weekDates = _thisWeekDates(today);
+    final attendedSet = month.attendedDates.toSet();
+    final todayKey = _dateKey(today);
+    final attendedToday = attendedSet.contains(todayKey);
 
+    final nextMilestone = StreakMilestones.nextMilestone(month.currentStreak);
+    final bonusAtMilestone = nextMilestone != null ? StreakMilestones.bonusByDays[nextMilestone]! : 0;
+
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(height: 10),
+          const Text(
+            '매일매일 출석하고\n비밀 선물을 받아보세요!',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white, height: 1.4),
+          ),
+          const SizedBox(height: 40),
+
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  '이번 달 출석 지도 🗺️  (연속 ${month.currentStreak}일)',
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(7, (i) {
+                    final date = weekDates[i];
+                    final key = _dateKey(date);
+                    final isToday = key == todayKey;
+                    final isAttended = attendedSet.contains(key);
+                    final isFuture = date.isAfter(today);
+                    return _buildStamp(
+                      label: _weekdayLabels[i],
+                      isToday: isToday,
+                      isAttended: isAttended,
+                      isFuture: isFuture,
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          _buildAttendanceButton(attendedToday),
+          const SizedBox(height: 40),
+
+          const Text(
+            '연속 출석 보상',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.pastelPurple.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.pastelPurple.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: const BoxDecoration(color: AppTheme.pastelPurple, shape: BoxShape.circle),
+                  child: const Icon(Icons.redeem, color: AppTheme.navyColor, size: 28),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        nextMilestone == null
+                            ? '모든 연속 출석 보상을 받았어요!'
+                            : '$nextMilestone일 연속 출석까지 ${nextMilestone - month.currentStreak}일 남았어요! (+$bonusAtMilestone 토큰)',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 8),
+                      if (nextMilestone != null) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            value: (month.currentStreak / nextMilestone).clamp(0, 1),
+                            minHeight: 8,
+                            backgroundColor: Colors.white.withValues(alpha: 0.1),
+                            valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.pastelPurple),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text('현재 ${month.currentStreak}일 / $nextMilestone일', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          Text(
+            '이번 달 출석률 ${month.attendanceRate.toStringAsFixed(1)}%  (${month.attendedCount}/${month.denominator}일)',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white54, fontSize: 13),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStamp({
+    required String label,
+    required bool isToday,
+    required bool isAttended,
+    required bool isFuture,
+  }) {
     Color bgColor;
     Color iconColor;
-    IconData? icon;
+    IconData icon;
 
-    if (status == 1) {
-      // 출석 완료
+    if (isAttended) {
       bgColor = AppTheme.pastelGreen;
       iconColor = AppTheme.navyColor;
       icon = Icons.check_circle;
-    } else if (status == 2) {
-      // 오늘 (아직 출석 전)
+    } else if (isToday) {
       bgColor = AppTheme.yellowColor;
       iconColor = AppTheme.navyColor;
       icon = Icons.star;
     } else {
-      // 결석(0) 이나 미래(3)
-      bgColor = Colors.white.withOpacity(0.1);
+      bgColor = Colors.white.withValues(alpha: 0.1);
       iconColor = Colors.white30;
-      icon = status == 0 ? Icons.close : Icons.circle_outlined;
+      icon = isFuture ? Icons.circle_outlined : Icons.close;
     }
 
     return Column(
       children: [
-        Text(day, style: TextStyle(color: status == 2 ? AppTheme.yellowColor : Colors.white70, fontWeight: status == 2 ? FontWeight.bold : FontWeight.normal)),
+        Text(label, style: TextStyle(color: isToday ? AppTheme.yellowColor : Colors.white70, fontWeight: isToday ? FontWeight.bold : FontWeight.normal)),
         const SizedBox(height: 12),
         Container(
           width: 36,
@@ -175,44 +304,37 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  // --- UI 컴포넌트: 출석 도장 찍기 버튼 ---
-  Widget _buildAttendanceButton() {
-    // 오늘 출석을 안 한 상태(status == 2)인지 확인
-    bool canAttendToday = _weeklyAttendance.any((data) => data['status'] == 2);
-
+  Widget _buildAttendanceButton(bool attendedToday) {
     return SizedBox(
       height: 60,
       child: ElevatedButton(
-        onPressed: canAttendToday
-            ? () {
-          setState(() {
-            // 수요일(오늘)의 상태를 출석 완료(1)로 변경
-            final todayIndex = _weeklyAttendance.indexWhere((data) => data['status'] == 2);
-            if (todayIndex != -1) {
-              _weeklyAttendance[todayIndex]['status'] = 1;
-              _totalAttendance += 1;
-            }
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✨ 출석 도장 쾅! 마법 토큰 10개를 받았어요!'),
-              backgroundColor: AppTheme.pastelGreen,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-            : null, // 이미 출석했으면 버튼 비활성화
+        onPressed: (attendedToday || _isChecking) ? null : _checkIn,
         style: ElevatedButton.styleFrom(
-          backgroundColor: canAttendToday ? AppTheme.yellowColor : Colors.white.withOpacity(0.1),
-          foregroundColor: canAttendToday ? AppTheme.navyColor : Colors.white54,
+          backgroundColor: attendedToday ? Colors.white.withValues(alpha: 0.1) : AppTheme.yellowColor,
+          foregroundColor: attendedToday ? Colors.white54 : AppTheme.navyColor,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          elevation: canAttendToday ? 4 : 0,
+          elevation: attendedToday ? 0 : 4,
         ),
-        child: Text(
-          canAttendToday ? '오늘의 출석 도장 찍기' : '오늘 출석 완료! 내일 또 만나요',
-          style: const TextStyle(fontSize: 18),
-        ),
+        child: _isChecking
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.navyColor),
+              )
+            : Text(
+                attendedToday ? '오늘 출석 완료! 내일 또 만나요' : '오늘의 출석 도장 찍기',
+                style: const TextStyle(fontSize: 18),
+              ),
       ),
     );
   }
+
+  List<DateTime> _thisWeekDates(DateTime today) {
+    // weekday: 월=1 ... 일=7
+    final monday = today.subtract(Duration(days: today.weekday - 1));
+    return List.generate(7, (i) => DateTime(monday.year, monday.month, monday.day + i));
+  }
+
+  String _dateKey(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 }

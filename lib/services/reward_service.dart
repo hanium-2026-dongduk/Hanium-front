@@ -4,8 +4,11 @@ import '../core/api_client.dart';
 import '../core/api_exception.dart';
 import '../core/api_response.dart';
 import '../models/json_parse.dart';
+import '../models/page_result.dart';
+import '../models/reward_detail.dart';
+import '../models/reward_history_entry.dart';
 
-/// 보상 포인트 조회. (P-MN-MN02 토큰 표시)
+/// 보상 포인트 조회. (P-MN-MN02 토큰 표시, P-GM-RW02~RW04)
 ///
 /// 계약은 Hanium-back `docs/API_SPEC_REWARD.md` 기준이다.
 ///
@@ -24,12 +27,49 @@ class RewardService {
   /// 지갑이 없던 자녀도 서버가 만들어 주므로 0부터 시작한다.
   ///
   /// 자기 자녀가 아니면 404, 토큰이 없으면 401이다.
-  Future<int> fetchPointBalance(int childProfileId) async {
+  Future<int> fetchPointBalance(int childProfileId) {
+    return _call(
+      () => _apiClient.dio.get<Map<String, dynamic>>('/rewards/$childProfileId/summary'),
+      (response) => parseId(ApiResponse.data(response)['points']),
+    );
+  }
+
+  /// GET /api/rewards/:childId → data
+  /// 포인트+레벨+연속출석+levelProgress. 마이페이지/보상 현황용. (P-GM-RW02, RW04)
+  Future<RewardDetail> fetchDetail(int childProfileId) {
+    return _call(
+      () => _apiClient.dio.get<Map<String, dynamic>>('/rewards/$childProfileId'),
+      (response) => RewardDetail.fromJson(ApiResponse.data(response)),
+    );
+  }
+
+  /// GET /api/rewards/:childId/history?page&limit&reason&from&to → { items, pagination }
+  /// (P-GM-RW03) reason을 생략하면 전체 사유가 최신순으로 온다.
+  Future<PageResult<RewardHistoryEntry>> fetchHistory(
+    int childProfileId, {
+    int page = 1,
+    int limit = 20,
+    String? reason,
+  }) {
+    return _call(
+      () => _apiClient.dio.get<Map<String, dynamic>>(
+        '/rewards/$childProfileId/history',
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+          if (reason != null) 'reason': reason,
+        },
+      ),
+      (response) => PageResult.fromJson(ApiResponse.data(response), RewardHistoryEntry.fromJson),
+    );
+  }
+
+  Future<T> _call<T>(
+    Future<Response<Map<String, dynamic>>> Function() request,
+    T Function(Response<Map<String, dynamic>> response) parse,
+  ) async {
     try {
-      final response = await _apiClient.dio.get<Map<String, dynamic>>(
-        '/rewards/$childProfileId/summary',
-      );
-      return parseId(ApiResponse.data(response)['points']);
+      return parse(await request());
     } on DioException catch (error) {
       throw ApiException.fromDio(error);
     }
