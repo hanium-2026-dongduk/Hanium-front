@@ -294,35 +294,45 @@ class _ParentScreenState extends State<ParentScreen> {
     );
   }
 
-  // [오른쪽 아래] 최근 열람 동화 로그 (버튼 빠짐)
+// [오른쪽 아래] 최근 열람 동화 로그 (PD05 반영: 좌우 스크롤 및 상세 일시 표시)
   Widget _buildLogCard() {
     return _buildDashboardCard(
-      title: '📖 최근 자녀 열람 동화 로그 (중)',
+      title: '📖 최근 자녀 열람 동화 로그',
       child: Padding(
         padding: const EdgeInsets.only(top: 16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            _buildBookCover('슈퍼 스페이스', AppTheme.pastelBlue),
-            _buildBookCover('용의 동굴 (완료)', AppTheme.pastelGreen),
-          ],
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal, // ✨ 좌우 스크롤 기능 추가!
+          child: Row(
+            children: [
+              _buildBookCover('슈퍼 스페이스', '2026.09.15 14:30', AppTheme.pastelBlue),
+              const SizedBox(width: 20),
+              _buildBookCover('용의 동굴 (완료)', '2026.09.14 20:00', AppTheme.pastelGreen),
+              const SizedBox(width: 20),
+              _buildBookCover('마법의 숲', '2026.09.12 16:15', AppTheme.pastelPink),
+              const SizedBox(width: 20),
+              _buildBookCover('바다 탐험', '2026.09.10 09:20', AppTheme.yellowColor),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildBookCover(String title, Color color) {
+  Widget _buildBookCover(String title, String datetime, Color color) {
     return Column(
       children: [
         Container(
-          width: 70, height: 90,
-          decoration: BoxDecoration(color: color.withOpacity(0.8), borderRadius: BorderRadius.circular(8)),
-          child: const Center(child: Icon(Icons.menu_book, color: AppTheme.navyColor, size: 28)),
+          width: 80, height: 110,
+          decoration: BoxDecoration(color: color.withOpacity(0.8), borderRadius: BorderRadius.circular(12)),
+          child: const Center(child: Icon(Icons.menu_book, color: AppTheme.navyColor, size: 36)),
         ),
-        const SizedBox(height: 8),
-        Text(title, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        const SizedBox(height: 12),
+        Text(title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        Text(datetime, style: const TextStyle(color: Colors.white54, fontSize: 11)), // ✨ 열람 일시 추가
       ],
     );
   }
 }
+
 
