@@ -16,7 +16,7 @@ dependencies:
   flutter_secure_storage: ^11.0.0
   flutter_dotenv: ^6.0.1
   flutter_tts: ^4.2.5
-  shared_preferences: ^2.3.3
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

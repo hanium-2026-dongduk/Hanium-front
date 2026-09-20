@@ -16,6 +16,8 @@ import 'services/reward_service.dart';
 import 'services/tts_service.dart';
 import 'services/vocabulary_service.dart';
 import 'theme/theme.dart';
+import 'screens/tutorial_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,15 +25,21 @@ Future<void> main() async {
   try {
     await dotenv.load();
   } catch (_) {
-    // .env를 아직 안 만들었어도 앱은 뜬다. (ApiConfig가 로컬 기본값으로 떨어짐)
-    debugPrint('.env를 찾지 못했어요. cp .env.example .env 로 만들어 주세요.');
+    debugPrint('.env를 찾지 못했어요.');
   }
 
-  runApp(const MyApp());
+  // 첫 실행인지 검사 (메모 없으면 true(처음)로 간주)
+  final prefs = await SharedPreferences.getInstance();
+  final isFirstLaunch = prefs.getBool('isFirstLaunch') ?? true;
+
+  // MyApp에 검사 결과를 전달하면서 실행
+  runApp(MyApp(isFirstLaunch: isFirstLaunch));
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  final bool isFirstLaunch;
+
+  const MyApp({super.key, required this.isFirstLaunch});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -108,7 +116,7 @@ class _MyAppState extends State<MyApp> {
 
         // 로그인 → 자녀 프로필 선택을 거쳐야 child_profile_id가 필요한 단어장/보상
         // API를 부를 수 있다. (ProfileListScreen에서 프로필을 고르면 MainScreen으로 이동)
-        home: const AuthGate(),
+        home: widget.isFirstLaunch ? const TutorialScreen() : const AuthGate(),
       ),
     );
   }
