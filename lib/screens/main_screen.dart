@@ -7,6 +7,7 @@ import 'package:hanium_front/screens/voca_screen.dart';
 import 'package:hanium_front/screens/reward_history_screen.dart';
 import 'package:hanium_front/providers/active_child_provider.dart';
 import 'package:hanium_front/providers/reward_provider.dart';
+import 'package:hanium_front/screens/library_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
