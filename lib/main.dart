@@ -6,15 +6,19 @@ import 'core/api_client.dart';
 import 'core/token_storage.dart';
 import 'providers/active_child_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/learning_stats_provider.dart';
+import 'providers/received_sticker_provider.dart';
 import 'providers/reward_provider.dart';
 import 'providers/reward_status_provider.dart';
 import 'screens/auth_gate.dart';
 import 'services/attendance_service.dart';
 import 'services/auth_service.dart';
 import 'services/badge_service.dart';
+import 'services/dashboard_service.dart';
 import 'services/mission_service.dart';
 import 'services/profile_service.dart';
 import 'services/reward_service.dart';
+import 'services/sticker_service.dart';
 import 'services/tts_service.dart';
 import 'services/vocabulary_service.dart';
 import 'theme/theme.dart';
@@ -117,6 +121,19 @@ class _MyAppState extends State<MyApp> {
             rewardService: _rewardService,
             badgeService: context.read<BadgeService>(),
           ),
+        ),
+        Provider<DashboardService>(create: (_) => DashboardService(_apiClient)),
+        Provider<StickerService>(create: (_) => StickerService(_apiClient)),
+        // 학습 통계(MP03)·받은 스티커(MP05) 화면 전용. 화면을 열 때마다 새로 불러온다.
+        ChangeNotifierProvider<LearningStatsProvider>(
+          create: (context) => LearningStatsProvider(
+            attendanceService: context.read<AttendanceService>(),
+            dashboardService: context.read<DashboardService>(),
+          ),
+        ),
+        ChangeNotifierProvider<ReceivedStickerProvider>(
+          create: (context) =>
+              ReceivedStickerProvider(stickerService: context.read<StickerService>()),
         ),
       ],
       child: MaterialApp(
