@@ -5,14 +5,21 @@ import 'package:provider/provider.dart';
 import 'core/api_client.dart';
 import 'core/token_storage.dart';
 import 'providers/active_child_provider.dart';
+import 'providers/attendance_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/learning_stats_provider.dart';
+import 'providers/received_sticker_provider.dart';
 import 'providers/reward_provider.dart';
+import 'providers/reward_status_provider.dart';
 import 'screens/auth_gate.dart';
 import 'services/attendance_service.dart';
 import 'services/auth_service.dart';
+import 'services/badge_service.dart';
+import 'services/dashboard_service.dart';
 import 'services/mission_service.dart';
 import 'services/profile_service.dart';
 import 'services/reward_service.dart';
+import 'services/sticker_service.dart';
 import 'services/tts_service.dart';
 import 'services/vocabulary_service.dart';
 import 'theme/theme.dart';
@@ -105,15 +112,40 @@ class _MyAppState extends State<MyApp> {
         Provider<VocabularyService>(create: (_) => VocabularyService(_apiClient)),
         Provider<MissionService>(create: (_) => MissionService(_apiClient)),
         Provider<AttendanceService>(create: (_) => AttendanceService(_apiClient)),
+        // 출석 현황 화면(RW02) 전용. 화면을 열 때마다 새로 불러온다.
+        ChangeNotifierProvider<AttendanceProvider>(
+          create: (context) =>
+              AttendanceProvider(attendanceService: context.read<AttendanceService>()),
+        ),
         Provider<TtsService>.value(value: _ttsService),
         ChangeNotifierProvider<ActiveChildProvider>.value(value: _activeChildProvider),
         ChangeNotifierProvider<RewardProvider>.value(value: _rewardProvider),
+        Provider<BadgeService>(create: (_) => BadgeService(_apiClient)),
+        // 보상 현황 화면(MP02) 전용. 화면을 열 때마다 새로 불러온다.
+        ChangeNotifierProvider<RewardStatusProvider>(
+          create: (context) => RewardStatusProvider(
+            rewardService: _rewardService,
+            badgeService: context.read<BadgeService>(),
+          ),
+        ),
+        Provider<DashboardService>(create: (_) => DashboardService(_apiClient)),
+        Provider<StickerService>(create: (_) => StickerService(_apiClient)),
+        // 학습 통계(MP03)·받은 스티커(MP05) 화면 전용. 화면을 열 때마다 새로 불러온다.
+        ChangeNotifierProvider<LearningStatsProvider>(
+          create: (context) => LearningStatsProvider(
+            attendanceService: context.read<AttendanceService>(),
+            dashboardService: context.read<DashboardService>(),
+          ),
+        ),
+        ChangeNotifierProvider<ReceivedStickerProvider>(
+          create: (context) =>
+              ReceivedStickerProvider(stickerService: context.read<StickerService>()),
+        ),
       ],
       child: MaterialApp(
         title: 'Magic Book',
         theme: AppTheme.lightTheme, // theme.dart에서 정의한 테마 적용
         debugShowCheckedModeBanner: false, // 우측 상단 디버그(Debug) 띠 제거
-
         // 로그인 → 자녀 프로필 선택을 거쳐야 child_profile_id가 필요한 단어장/보상
         // API를 부를 수 있다. (ProfileListScreen에서 프로필을 고르면 MainScreen으로 이동)
         home: widget.isFirstLaunch ? const TutorialScreen() : const AuthGate(),

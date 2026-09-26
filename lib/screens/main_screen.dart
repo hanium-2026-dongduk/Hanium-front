@@ -8,6 +8,7 @@ import 'package:hanium_front/screens/reward_history_screen.dart';
 import 'package:hanium_front/providers/active_child_provider.dart';
 import 'package:hanium_front/providers/reward_provider.dart';
 import 'package:hanium_front/screens/library_screen.dart';
+import 'package:hanium_front/screens/mypage/my_page_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -31,7 +32,9 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final points = context.watch<RewardProvider>().points;
+    final rewards = context.watch<RewardProvider>();
+    final points = rewards.points;
+    final level = rewards.level;
 
     return Scaffold(
       backgroundColor: AppTheme.navyColor,
@@ -40,6 +43,16 @@ class _MainScreenState extends State<MainScreen> {
         elevation: 0,
         title: const Text('✨ Magic Book', style: TextStyle(color: Colors.white)),
         actions: [
+          // 아동 UX 기준(48dp) 터치 영역을 맞춘다.
+          IconButton(
+            tooltip: '마이페이지',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            icon: const Icon(Icons.person, color: Colors.white),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const MyPageScreen()),
+            ),
+          ),
           InkWell(
             borderRadius: BorderRadius.circular(30),
             onTap: () => Navigator.push(
@@ -64,9 +77,13 @@ class _MainScreenState extends State<MainScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.favorite, color: AppTheme.pastelPurple, size: 22),
+                      const Icon(Icons.monetization_on, color: AppTheme.yellowColor, size: 22),
                       const SizedBox(width: 8),
                       Text('$points', style: const TextStyle(color: AppTheme.navyColor, fontWeight: FontWeight.bold, fontSize: 16)),
+                      if (level > 0) ...[
+                        const SizedBox(width: 10),
+                        Text('Lv.$level', style: const TextStyle(color: AppTheme.pastelPurple, fontWeight: FontWeight.bold, fontSize: 14)),
+                      ],
                     ],
                   ),
                 ),

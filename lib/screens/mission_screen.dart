@@ -170,9 +170,9 @@ class _MissionScreenState extends State<MissionScreen> {
                 if (isDone)
                   Row(
                     children: [
-                      const Icon(Icons.favorite, color: AppTheme.pastelPurple, size: 14),
+                      const Icon(Icons.monetization_on, color: AppTheme.yellowColor, size: 14),
                       const SizedBox(width: 4),
-                      Text('+${mission.rewardPoints} 토큰 획득', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                      Text('마법 토큰 +${mission.rewardPoints} 획득', style: const TextStyle(color: Colors.white70, fontSize: 14)),
                     ],
                   )
                 else ...[
@@ -187,8 +187,8 @@ class _MissionScreenState extends State<MissionScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${mission.progressCount} / ${mission.targetCount}  ·  +${mission.rewardPoints} 토큰',
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    '${mission.progressCount} / ${mission.targetCount}  ·  마법 토큰 +${mission.rewardPoints}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 14),
                   ),
                 ],
               ],

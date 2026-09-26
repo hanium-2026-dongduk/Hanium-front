@@ -76,7 +76,7 @@ void main() {
     );
 
     expect(find.text('단어 5개 모으기'), findsOneWidget);
-    expect(find.text('2 / 5  ·  +15 토큰'), findsOneWidget);
+    expect(find.text('2 / 5  ·  마법 토큰 +15'), findsOneWidget);
   });
 
   testWidgets('완료된 미션은 획득 포인트와 체크 표시를 보여준다', (tester) async {
@@ -87,7 +87,7 @@ void main() {
       ]),
     );
 
-    expect(find.text('+10 토큰 획득'), findsOneWidget);
+    expect(find.text('마법 토큰 +10 획득'), findsOneWidget);
     expect(find.byIcon(Icons.check_circle), findsOneWidget);
   });
 

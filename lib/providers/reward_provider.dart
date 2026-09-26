@@ -16,12 +16,26 @@ class RewardProvider extends ChangeNotifier {
   RewardProvider({required RewardService rewardService}) : _rewardService = rewardService;
 
   int _points = 0;
+  int _level = 0;
+  int? _levelChildId;
+  int? _pendingLevelUp;
   bool _isRefreshing = false;
   String? _errorMessage;
 
   int get points => _points;
+
+  /// 현재 레벨. 아직 불러오기 전이면 0이다. (P-GM-RW04)
+  int get level => _level;
   bool get isRefreshing => _isRefreshing;
   String? get errorMessage => _errorMessage;
+
+  /// 마지막 [refresh]에서 레벨이 올랐다면 새 레벨을 한 번만 돌려주고 비운다. (P-GM-RW05)
+  /// 축하 연출을 띄우는 화면이 호출한다.
+  int? takeLevelUp() {
+    final level = _pendingLevelUp;
+    _pendingLevelUp = null;
+    return level;
+  }
 
   Future<void> refresh(int childProfileId) async {
     if (_isRefreshing) return;
@@ -29,7 +43,14 @@ class RewardProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _points = await _rewardService.fetchPointBalance(childProfileId);
+      final detail = await _rewardService.fetchDetail(childProfileId);
+      // 처음 불러올 때나 자녀가 바뀐 직후는 비교 기준이 없으므로 레벨업으로 보지 않는다.
+      if (_levelChildId == childProfileId && detail.level > _level) {
+        _pendingLevelUp = detail.level;
+      }
+      _levelChildId = childProfileId;
+      _level = detail.level;
+      _points = detail.points;
       _errorMessage = null;
     } on ApiException catch (error) {
       _errorMessage = error.message;
