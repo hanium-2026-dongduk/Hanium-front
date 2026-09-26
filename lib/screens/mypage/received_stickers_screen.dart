@@ -52,7 +52,9 @@ class _ReceivedStickersScreenState extends State<ReceivedStickersScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ReceivedStickerProvider>();
-    final stickers = provider.stickers;
+    // 자녀를 바꾼 직후 첫 프레임에는 Provider가 아직 이전 자녀 값을 들고 있다.
+    final isCurrent = provider.loadedChildId == _childProfileId;
+    final stickers = isCurrent ? provider.stickers : const <ReceivedSticker>[];
 
     return Scaffold(
       backgroundColor: AppTheme.navyColor,
@@ -71,8 +73,8 @@ class _ReceivedStickersScreenState extends State<ReceivedStickersScreen> {
             : RefreshIndicator(
                 onRefresh: _load,
                 child: AsyncStateView(
-                  isLoading: provider.isLoading && stickers.isEmpty,
-                  errorMessage: stickers.isEmpty ? provider.errorMessage : null,
+                  isLoading: (provider.isLoading || !isCurrent) && stickers.isEmpty,
+                  errorMessage: stickers.isEmpty && isCurrent ? provider.errorMessage : null,
                   onRetry: _load,
                   isEmpty: stickers.isEmpty,
                   emptyMessage: '아직 받은 칭찬 스티커가 없어요',
@@ -149,7 +151,7 @@ class _StickerTile extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     _formatDate(sentAt),
-                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                    style: const TextStyle(color: Colors.white54, fontSize: 14),
                   ),
                 ],
               ],

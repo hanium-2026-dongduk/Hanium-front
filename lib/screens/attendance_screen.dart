@@ -227,7 +227,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                       Text(
                         nextMilestone == null
                             ? '모든 연속 출석 보상을 받았어요!'
-                            : '$nextMilestone일 연속 출석까지 ${nextMilestone - month.currentStreak}일 남았어요! (+$bonusAtMilestone 토큰)',
+                            : '$nextMilestone일 연속 출석까지 ${nextMilestone - month.currentStreak}일 남았어요! (마법 토큰 +$bonusAtMilestone)',
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       const SizedBox(height: 8),
@@ -242,7 +242,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Text('현재 ${month.currentStreak}일 / $nextMilestone일', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                        Text('현재 ${month.currentStreak}일 / $nextMilestone일', style: const TextStyle(color: Colors.white70, fontSize: 14)),
                       ],
                     ],
                   ),
@@ -255,7 +255,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           Text(
             '이번 달 출석률 ${month.attendanceRate.toStringAsFixed(1)}%  (${month.attendedCount}/${month.denominator}일)',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white54, fontSize: 13),
+            style: const TextStyle(color: Colors.white54, fontSize: 14),
           ),
           const SizedBox(height: 24),
         ],

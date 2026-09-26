@@ -23,6 +23,9 @@ class ReceivedStickerProvider extends ChangeNotifier {
 
   List<ReceivedSticker> get stickers => List.unmodifiable(_stickers);
   bool get hasMore => _hasMore;
+
+  /// 지금 들고 있는 값이 어느 자녀의 것인지. 화면은 자기 자녀와 다르면 값을 쓰지 않는다.
+  int? get loadedChildId => _loadedChildId;
   bool get isLoading => _isLoading;
   bool get isLoadingMore => _isLoadingMore;
   String? get errorMessage => _errorMessage;

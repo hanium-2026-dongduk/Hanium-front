@@ -96,6 +96,35 @@ Future<void> _pumpScreen(
 }
 
 void main() {
+  testWidgets('자녀를 바꾼 직후 첫 프레임에는 이전 자녀의 값을 보여주지 않는다', (tester) async {
+    final rewardService = _FakeRewardService();
+    final provider = RewardStatusProvider(
+      rewardService: rewardService,
+      badgeService: _FakeBadgeService(),
+    );
+    await provider.load(1); // 첫째 화면을 봤던 상태로 Provider에 값이 남아 있다.
+
+    final activeChild = ActiveChildProvider(profileService: const _StubProfileService())
+      ..setActiveChild(const ChildProfile(childProfileId: 2, childName: '둘째'));
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<ActiveChildProvider>.value(value: activeChild),
+          ChangeNotifierProvider<RewardStatusProvider>.value(value: provider),
+        ],
+        child: const MaterialApp(home: RewardStatusScreen()),
+      ),
+    );
+
+    // 첫 프레임: 다음 프레임에 불러오기가 시작되기 전이므로 로딩만 보여야 한다.
+    expect(find.text('340'), findsNothing);
+    expect(find.text('불꽃 출석왕'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    await tester.pumpAndSettle();
+    expect(find.text('340'), findsOneWidget);
+  });
+
   testWidgets('레벨·포인트·진행 안내와 배지를 보여준다', (tester) async {
     await _pumpScreen(
       tester,
@@ -105,7 +134,7 @@ void main() {
 
     expect(find.text('Lv.3'), findsOneWidget);
     expect(find.text('340'), findsOneWidget);
-    expect(find.text('다음 레벨까지 260점 남았어요'), findsOneWidget);
+    expect(find.text('다음 레벨까지 마법 토큰 260개 남았어요'), findsOneWidget);
     expect(find.text('내 배지 1/2'), findsOneWidget);
     expect(find.text('불꽃 출석왕'), findsOneWidget);
     expect(find.text('동화 박사'), findsOneWidget);

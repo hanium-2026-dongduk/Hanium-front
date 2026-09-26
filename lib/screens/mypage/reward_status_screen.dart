@@ -68,8 +68,10 @@ class _RewardStatusScreenState extends State<RewardStatusScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<RewardStatusProvider>();
-    final detail = provider.detail;
-    final badges = provider.badges;
+    // 자녀를 바꾼 직후 첫 프레임에는 Provider가 아직 이전 자녀 값을 들고 있다.
+    final isCurrent = provider.loadedChildId == _childProfileId;
+    final detail = isCurrent ? provider.detail : null;
+    final badges = isCurrent ? provider.badges : null;
 
     return Scaffold(
       backgroundColor: AppTheme.navyColor,
@@ -88,8 +90,8 @@ class _RewardStatusScreenState extends State<RewardStatusScreen> {
             : RefreshIndicator(
                 onRefresh: _load,
                 child: AsyncStateView(
-                  isLoading: provider.isLoading && detail == null,
-                  errorMessage: detail == null ? provider.errorMessage : null,
+                  isLoading: (provider.isLoading || !isCurrent) && detail == null,
+                  errorMessage: detail == null && isCurrent ? provider.errorMessage : null,
                   onRetry: _load,
                   contentBuilder: (_) => ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -182,28 +184,32 @@ class _BadgeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    // 배경색을 InkWell 바깥 Material이 그려야 눌렀을 때 리플이 보인다.
+    return Material(
+      color: Colors.white.withValues(alpha: 0.05),
       borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _BadgeIcon(badge: badge, size: 56),
-            const SizedBox(height: 8),
-            Text(
-              badge.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: badge.isEarned ? Colors.white : Colors.white54, fontSize: 12),
-            ),
-          ],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _BadgeIcon(badge: badge, size: 56),
+              const SizedBox(height: 8),
+              Text(
+                badge.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: badge.isEarned ? Colors.white : Colors.white54,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

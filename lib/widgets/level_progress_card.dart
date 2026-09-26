@@ -50,7 +50,7 @@ class LevelProgressCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              const Icon(Icons.favorite, color: AppTheme.pastelPurple, size: 22),
+              const Icon(Icons.monetization_on, color: AppTheme.yellowColor, size: 22),
               const SizedBox(width: 6),
               Text(
                 '${detail.points}',
@@ -74,7 +74,7 @@ class LevelProgressCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            remaining == null ? '최고 레벨이에요! 🎉' : '다음 레벨까지 $remaining점 남았어요',
+            remaining == null ? '최고 레벨이에요! 🎉' : '다음 레벨까지 마법 토큰 $remaining개 남았어요',
             style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
         ],

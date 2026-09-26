@@ -120,7 +120,7 @@ class _ProfileCard extends StatelessWidget {
                     '보호자 $guardianEmail',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white54, fontSize: 13),
+                    style: const TextStyle(color: Colors.white54, fontSize: 14),
                   ),
                 ],
               ],
@@ -141,32 +141,33 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    // 배경색을 InkWell 바깥 Material이 그려야 눌렀을 때 리플이 보인다.
+    return Material(
+      color: Colors.white.withValues(alpha: 0.08),
       borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 64),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: AppTheme.yellowColor, size: 28),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 64),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Row(
+            children: [
+              Icon(icon, color: AppTheme.yellowColor, size: 28),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
-            const Icon(Icons.chevron_right, color: Colors.white54),
-          ],
+              const Icon(Icons.chevron_right, color: Colors.white54),
+            ],
+          ),
         ),
       ),
     );

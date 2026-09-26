@@ -77,7 +77,7 @@ class _MainScreenState extends State<MainScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.favorite, color: AppTheme.pastelPurple, size: 22),
+                      const Icon(Icons.monetization_on, color: AppTheme.yellowColor, size: 22),
                       const SizedBox(width: 8),
                       Text('$points', style: const TextStyle(color: AppTheme.navyColor, fontWeight: FontWeight.bold, fontSize: 16)),
                       if (level > 0) ...[

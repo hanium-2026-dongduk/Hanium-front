@@ -87,7 +87,7 @@ void main() {
     );
 
     expect(find.text('미션 완료'), findsOneWidget);
-    expect(find.text('+20 토큰'), findsOneWidget);
+    expect(find.text('마법 토큰 +20'), findsOneWidget);
     expect(find.text('잔액 340'), findsOneWidget);
   });
 

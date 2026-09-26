@@ -37,8 +37,10 @@ class _LearningStatsScreenState extends State<LearningStatsScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<LearningStatsProvider>();
-    final attendance = provider.attendance;
-    final summary = provider.summary;
+    // 자녀를 바꾼 직후 첫 프레임에는 Provider가 아직 이전 자녀 값을 들고 있다.
+    final isCurrent = provider.loadedChildId == _childProfileId;
+    final attendance = isCurrent ? provider.attendance : null;
+    final summary = isCurrent ? provider.summary : null;
     final hasData = attendance != null && summary != null;
 
     return Scaffold(
@@ -58,8 +60,8 @@ class _LearningStatsScreenState extends State<LearningStatsScreen> {
             : RefreshIndicator(
                 onRefresh: _load,
                 child: AsyncStateView(
-                  isLoading: provider.isLoading && !hasData,
-                  errorMessage: hasData ? null : provider.errorMessage,
+                  isLoading: (provider.isLoading || !isCurrent) && !hasData,
+                  errorMessage: hasData || !isCurrent ? null : provider.errorMessage,
                   onRetry: _load,
                   isEmpty: hasData && _isEmpty(attendance, summary),
                   emptyMessage: '아직 학습 기록이 없어요.\n오늘 출석하고 시작해 봐요!',
@@ -135,7 +137,7 @@ class _StatBox extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
           ],
         ),
       ),
