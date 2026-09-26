@@ -7,6 +7,7 @@ import 'package:hanium_front/models/page_result.dart';
 import 'package:hanium_front/models/reward_detail.dart';
 import 'package:hanium_front/models/reward_history_entry.dart';
 import 'package:hanium_front/providers/active_child_provider.dart';
+import 'package:hanium_front/providers/attendance_provider.dart';
 import 'package:hanium_front/providers/reward_provider.dart';
 import 'package:hanium_front/screens/attendance_screen.dart';
 import 'package:hanium_front/services/attendance_service.dart';
@@ -82,7 +83,9 @@ void main() {
         providers: [
           ChangeNotifierProvider<ActiveChildProvider>.value(value: activeChild),
           ChangeNotifierProvider<RewardProvider>.value(value: rewardProvider),
-          Provider<AttendanceService>.value(value: service),
+          ChangeNotifierProvider<AttendanceProvider>(
+            create: (_) => AttendanceProvider(attendanceService: service),
+          ),
         ],
         child: const MaterialApp(home: AttendanceScreen()),
       ),

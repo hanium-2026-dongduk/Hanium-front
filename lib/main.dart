@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'core/api_client.dart';
 import 'core/token_storage.dart';
 import 'providers/active_child_provider.dart';
+import 'providers/attendance_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/learning_stats_provider.dart';
 import 'providers/received_sticker_provider.dart';
@@ -111,6 +112,11 @@ class _MyAppState extends State<MyApp> {
         Provider<VocabularyService>(create: (_) => VocabularyService(_apiClient)),
         Provider<MissionService>(create: (_) => MissionService(_apiClient)),
         Provider<AttendanceService>(create: (_) => AttendanceService(_apiClient)),
+        // 출석 현황 화면(RW02) 전용. 화면을 열 때마다 새로 불러온다.
+        ChangeNotifierProvider<AttendanceProvider>(
+          create: (context) =>
+              AttendanceProvider(attendanceService: context.read<AttendanceService>()),
+        ),
         Provider<TtsService>.value(value: _ttsService),
         ChangeNotifierProvider<ActiveChildProvider>.value(value: _activeChildProvider),
         ChangeNotifierProvider<RewardProvider>.value(value: _rewardProvider),

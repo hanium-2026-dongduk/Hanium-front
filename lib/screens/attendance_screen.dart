@@ -3,11 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/api_exception.dart';
 import '../models/attendance_month.dart';
 import '../providers/active_child_provider.dart';
+import '../providers/attendance_provider.dart';
 import '../providers/reward_provider.dart';
-import '../services/attendance_service.dart';
 import '../theme/theme.dart';
 import '../widgets/async_state_view.dart';
 import '../widgets/reward_celebration.dart';
@@ -23,11 +22,6 @@ class AttendanceScreen extends StatefulWidget {
 class _AttendanceScreenState extends State<AttendanceScreen> {
   static const _weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
 
-  AttendanceMonth? _month;
-  bool _isLoading = true;
-  bool _isChecking = false;
-  String? _errorMessage;
-
   @override
   void initState() {
     super.initState();
@@ -38,84 +32,60 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
 
   Future<void> _load() async {
     final childProfileId = _childProfileId;
-    if (childProfileId == null) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = '먼저 자녀 프로필을 선택해 주세요.';
-      });
+    if (childProfileId == null || !mounted) return;
+    await context.read<AttendanceProvider>().load(childProfileId);
+  }
+
+  Future<void> _checkIn() async {
+    final childProfileId = _childProfileId;
+    if (childProfileId == null) return;
+
+    final attendance = context.read<AttendanceProvider>();
+    final rewardProvider = context.read<RewardProvider>();
+    final result = await attendance.checkIn(childProfileId);
+    if (!mounted) return;
+
+    if (result == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(attendance.checkInError ?? '출석 도장을 찍지 못했어요.')),
+      );
       return;
     }
 
+    // 포인트가 바뀌었을 수 있으므로 메인 화면 토큰 표시를 먼저 갱신한다.
+    // 이때 레벨이 올랐는지도 함께 알 수 있어서, 축하 연출은 그 뒤에 띄운다.
+    await rewardProvider.refresh(childProfileId);
     if (!mounted) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    final newLevel = rewardProvider.takeLevelUp();
 
-    try {
-      final month = await context.read<AttendanceService>().fetchMonthly(childProfileId);
-      if (!mounted) return;
-      setState(() {
-        _month = month;
-        _isLoading = false;
-      });
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _errorMessage = error.message;
-        _isLoading = false;
-      });
-    }
-  }
-
-  /// 도장 찍기. 서버가 멱등하게 처리하므로("같은 날 몇 번 호출해도 안전"),
-  /// 이미 출석한 날에도 다시 눌러 최신 상태를 다시 받아오는 것 자체는 안전하다.
-  Future<void> _checkIn() async {
-    final childProfileId = _childProfileId;
-    if (childProfileId == null || _isChecking) return;
-
-    setState(() => _isChecking = true);
-    try {
-      final result = await context.read<AttendanceService>().checkIn(childProfileId);
-      await _load();
-      if (!mounted) return;
-
-      // 포인트가 바뀌었을 수 있으므로 메인 화면 토큰 표시를 먼저 갱신한다.
-      // 이때 레벨이 올랐는지도 함께 알 수 있어서, 축하 연출은 그 뒤에 띄운다.
-      final rewardProvider = context.read<RewardProvider>();
-      await rewardProvider.refresh(childProfileId);
-      if (!mounted) return;
-      final newLevel = rewardProvider.takeLevelUp();
-
-      if (result.pointsEarned > 0 || result.badgesAwarded.isNotEmpty || newLevel != null) {
-        // 연출이 닫힐 때까지 기다리지 않는다. (_isChecking을 오래 잡지 않기 위해)
-        unawaited(
-          showRewardCelebration(
-            context,
-            points: result.pointsEarned,
-            badgeCount: result.badgesAwarded.length,
-            newLevel: newLevel,
-          ),
-        );
-      } else if (result.alreadyChecked) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('오늘은 이미 출석했어요. 내일 또 만나요!'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } on ApiException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
-    } finally {
-      if (mounted) setState(() => _isChecking = false);
+    if (result.pointsEarned > 0 || result.badgesAwarded.isNotEmpty || newLevel != null) {
+      // 연출이 닫힐 때까지 기다리지 않는다.
+      unawaited(
+        showRewardCelebration(
+          context,
+          points: result.pointsEarned,
+          badgeCount: result.badgesAwarded.length,
+          newLevel: newLevel,
+        ),
+      );
+    } else if (result.alreadyChecked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('오늘은 이미 출석했어요. 내일 또 만나요!'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final attendance = context.watch<AttendanceProvider>();
+    final childProfileId = context.watch<ActiveChildProvider>().childProfileId;
+    // 자녀를 바꾼 직후 첫 프레임에는 Provider가 아직 이전 자녀 값을 들고 있다.
+    final isCurrent = attendance.loadedChildId == childProfileId;
+    final month = isCurrent ? attendance.month : null;
+
     return Scaffold(
       backgroundColor: AppTheme.navyColor,
       appBar: AppBar(
@@ -128,19 +98,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: AsyncStateView(
-            isLoading: _isLoading,
-            errorMessage: _errorMessage,
+            isLoading: childProfileId != null && (attendance.isLoading || !isCurrent) && month == null,
+            errorMessage: childProfileId == null
+                ? '먼저 자녀 프로필을 선택해 주세요.'
+                : (isCurrent ? attendance.errorMessage : null),
             onRetry: _load,
-            isEmpty: _month == null,
+            isEmpty: month == null,
             emptyMessage: '출석 정보를 불러오지 못했어요.',
-            contentBuilder: (_) => _buildContent(_month!),
+            contentBuilder: (_) => _buildContent(month!, attendance.isChecking),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildContent(AttendanceMonth month) {
+  Widget _buildContent(AttendanceMonth month, bool isChecking) {
     final today = DateTime.now();
     final weekDates = _thisWeekDates(today);
     final attendedSet = month.attendedDates.toSet();
@@ -197,7 +169,7 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
           ),
           const SizedBox(height: 32),
 
-          _buildAttendanceButton(attendedToday),
+          _buildAttendanceButton(attendedToday, isChecking),
           const SizedBox(height: 40),
 
           const Text(
@@ -301,18 +273,18 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     );
   }
 
-  Widget _buildAttendanceButton(bool attendedToday) {
+  Widget _buildAttendanceButton(bool attendedToday, bool isChecking) {
     return SizedBox(
       height: 60,
       child: ElevatedButton(
-        onPressed: (attendedToday || _isChecking) ? null : _checkIn,
+        onPressed: (attendedToday || isChecking) ? null : _checkIn,
         style: ElevatedButton.styleFrom(
           backgroundColor: attendedToday ? Colors.white.withValues(alpha: 0.1) : AppTheme.yellowColor,
           foregroundColor: attendedToday ? Colors.white54 : AppTheme.navyColor,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           elevation: attendedToday ? 0 : 4,
         ),
-        child: _isChecking
+        child: isChecking
             ? const SizedBox(
                 width: 24,
                 height: 24,
