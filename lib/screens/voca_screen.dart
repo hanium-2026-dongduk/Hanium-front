@@ -169,6 +169,24 @@ class _VocaScreenState extends State<VocaScreen> {
     }
   }
 
+  /// 단어·즐겨찾기 단어 퀴즈는 백엔드에 만드는 API가 없어 아직 열 수 없다. (P-ED-QZ01)
+  /// 진입 지점만 두고 준비 중임을 안내한다.
+  void _showQuizNotReady() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('퀴즈 준비 중'),
+        content: const Text('단어 퀴즈는 아직 준비 중이에요.\n조금만 기다려 주세요!'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showMessage(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
@@ -250,6 +268,33 @@ class _VocaScreenState extends State<VocaScreen> {
                   ),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                 ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _showQuizNotReady,
+                    icon: const Icon(Icons.quiz, color: AppTheme.pastelPurple),
+                    label: const Text('단어 퀴즈', style: TextStyle(color: Colors.white)),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(48, 48),
+                      side: const BorderSide(color: AppTheme.pastelPurple, width: 1.5),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _showQuizNotReady,
+                    icon: const Icon(Icons.quiz, color: AppTheme.yellowColor),
+                    label: const Text('즐겨찾기 퀴즈', style: TextStyle(color: Colors.white)),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(48, 48),
+                      side: const BorderSide(color: AppTheme.yellowColor, width: 1.5),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),

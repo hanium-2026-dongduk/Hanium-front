@@ -187,4 +187,21 @@ void main() {
     expect(service.deletedIds, [1]);
     expect(find.text('Castle'), findsNothing);
   });
+
+  testWidgets('단어·즐겨찾기 퀴즈 버튼은 아직 준비 중이라고 안내한다', (tester) async {
+    await pumpScreen(tester, _FakeVocabularyService([]));
+
+    await tester.tap(find.text('단어 퀴즈'));
+    await tester.pumpAndSettle();
+    expect(find.text('퀴즈 준비 중'), findsOneWidget);
+    expect(find.textContaining('아직 준비 중이에요'), findsOneWidget);
+
+    await tester.tap(find.text('확인'));
+    await tester.pumpAndSettle();
+    expect(find.text('퀴즈 준비 중'), findsNothing);
+
+    await tester.tap(find.text('즐겨찾기 퀴즈'));
+    await tester.pumpAndSettle();
+    expect(find.text('퀴즈 준비 중'), findsOneWidget);
+  });
 }
