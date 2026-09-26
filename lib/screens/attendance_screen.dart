@@ -33,7 +33,14 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
   Future<void> _load() async {
     final childProfileId = _childProfileId;
     if (childProfileId == null || !mounted) return;
-    await context.read<AttendanceProvider>().load(childProfileId);
+    final attendance = context.read<AttendanceProvider>();
+    await attendance.load(childProfileId);
+    if (!mounted) return;
+    // 이미 보여 주던 출석 지도는 지우지 않고, 새로고침 실패만 알린다.
+    final error = attendance.errorMessage;
+    if (error != null && attendance.month != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    }
   }
 
   Future<void> _checkIn() async {
@@ -95,19 +102,19 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _load,
-          child: AsyncStateView(
-            isLoading: childProfileId != null && (attendance.isLoading || !isCurrent) && month == null,
-            errorMessage: childProfileId == null
-                ? '먼저 자녀 프로필을 선택해 주세요.'
-                : (isCurrent ? attendance.errorMessage : null),
-            onRetry: _load,
-            isEmpty: month == null,
-            emptyMessage: '출석 정보를 불러오지 못했어요.',
-            contentBuilder: (_) => _buildContent(month!, attendance.isChecking),
-          ),
-        ),
+        child: childProfileId == null
+            ? const CenteredMessage(message: '먼저 자녀 프로필을 선택해 주세요.')
+            : RefreshIndicator(
+                onRefresh: _load,
+                child: AsyncStateView(
+                  isLoading: (attendance.isLoading || !isCurrent) && month == null,
+                  errorMessage: month == null && isCurrent ? attendance.errorMessage : null,
+                  onRetry: _load,
+                  isEmpty: month == null,
+                  emptyMessage: '출석 정보를 불러오지 못했어요.',
+                  contentBuilder: (_) => _buildContent(month!, attendance.isChecking),
+                ),
+              ),
       ),
     );
   }

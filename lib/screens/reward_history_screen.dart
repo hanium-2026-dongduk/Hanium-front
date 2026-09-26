@@ -233,7 +233,7 @@ class _RewardHistoryScreenState extends State<RewardHistoryScreen> {
                   style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                 ),
                 const SizedBox(height: 4),
-                Text(_formatDateTime(entry.createdAt), style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                Text(_formatDateTime(entry.createdAt), style: const TextStyle(color: Colors.white54, fontSize: 14)),
               ],
             ),
           ),
@@ -242,7 +242,7 @@ class _RewardHistoryScreenState extends State<RewardHistoryScreen> {
             children: [
               Text('마법 토큰 +${entry.points}', style: const TextStyle(color: AppTheme.yellowColor, fontWeight: FontWeight.bold, fontSize: 15)),
               const SizedBox(height: 4),
-              Text('잔액 ${entry.balanceAfter}', style: const TextStyle(color: Colors.white38, fontSize: 12)),
+              Text('잔액 ${entry.balanceAfter}', style: const TextStyle(color: Colors.white54, fontSize: 14)),
             ],
           ),
         ],

@@ -135,7 +135,7 @@ class _RewardStatusScreenState extends State<RewardStatusScreen> {
                           physics: const NeverScrollableScrollPhysics(),
                           mainAxisSpacing: 12,
                           crossAxisSpacing: 12,
-                          childAspectRatio: 0.85,
+                          childAspectRatio: 0.75,
                           children: [
                             for (final badge in badges.badges)
                               _BadgeTile(badge: badge, onTap: () => _showBadgeSheet(badge)),

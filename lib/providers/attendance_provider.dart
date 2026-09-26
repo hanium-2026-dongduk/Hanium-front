@@ -12,6 +12,7 @@ class AttendanceProvider extends ChangeNotifier {
 
   AttendanceMonth? _month;
   int? _loadedChildId;
+  int _loadSeq = 0; // 가장 최근에 시작한 조회만 결과를 반영한다.
   bool _isLoading = false;
   bool _isChecking = false;
   String? _errorMessage;
@@ -28,9 +29,12 @@ class AttendanceProvider extends ChangeNotifier {
   /// 마지막 도장 찍기가 실패한 이유. 성공하면 비워진다.
   String? get checkInError => _checkInError;
 
-  Future<void> load(int childProfileId) async {
+  /// [force]가 true면 같은 자녀를 이미 불러오는 중이어도 다시 불러온다.
+  /// (도장을 찍은 직후에는 진행 중이던 조회 결과가 도장 이전 값일 수 있다.)
+  Future<void> load(int childProfileId, {bool force = false}) async {
     // 같은 자녀를 이미 불러오는 중이면 겹치지 않게 막는다.
-    if (_isLoading && _loadedChildId == childProfileId) return;
+    if (!force && _isLoading && _loadedChildId == childProfileId) return;
+    final seq = ++_loadSeq;
 
     // 앱 전역에서 공유되는 Provider라, 자녀가 바뀌면 이전 자녀의 값이 보이지 않게 비운다.
     if (_loadedChildId != childProfileId) {
@@ -43,13 +47,13 @@ class AttendanceProvider extends ChangeNotifier {
 
     try {
       final month = await _attendanceService.fetchMonthly(childProfileId);
-      // 기다리는 사이 다른 자녀로 바뀌었다면 이 결과는 버린다.
-      if (_loadedChildId != childProfileId) return;
+      // 기다리는 사이 다른 자녀로 바뀌었거나 더 새로운 조회가 시작됐다면 이 결과는 버린다.
+      if (_loadedChildId != childProfileId || seq != _loadSeq) return;
       _month = month;
     } on ApiException catch (error) {
-      if (_loadedChildId == childProfileId) _errorMessage = error.message;
+      if (_loadedChildId == childProfileId && seq == _loadSeq) _errorMessage = error.message;
     } finally {
-      if (_loadedChildId == childProfileId) _isLoading = false;
+      if (_loadedChildId == childProfileId && seq == _loadSeq) _isLoading = false;
       notifyListeners();
     }
   }
@@ -67,7 +71,7 @@ class AttendanceProvider extends ChangeNotifier {
 
     try {
       final result = await _attendanceService.checkIn(childProfileId);
-      await load(childProfileId);
+      await load(childProfileId, force: true);
       return result;
     } on ApiException catch (error) {
       _checkInError = error.message;

@@ -30,12 +30,8 @@ class _FakeRewardService implements RewardService {
   Future<int> fetchPointBalance(int childProfileId) async => 0;
 
   @override
-  Future<RewardDetail> fetchDetail(int childProfileId) async => const RewardDetail(
-    childProfileId: 1,
-    points: 0,
-    level: 1,
-    streakDays: 0,
-  );
+  Future<RewardDetail> fetchDetail(int childProfileId) async =>
+      const RewardDetail(childProfileId: 1, points: 0, level: 1, streakDays: 0);
 
   @override
   Future<PageResult<RewardHistoryEntry>> fetchHistory(
@@ -73,9 +69,15 @@ class _FakeAttendanceService implements AttendanceService {
 }
 
 void main() {
-  Future<void> pumpScreen(WidgetTester tester, _FakeAttendanceService service) async {
-    final activeChild = ActiveChildProvider(profileService: const _StubProfileService())
-      ..setActiveChild(const ChildProfile(childProfileId: 1, childName: '첫째'));
+  Future<void> pumpScreen(
+    WidgetTester tester,
+    _FakeAttendanceService service, {
+    bool withChild = true,
+  }) async {
+    final activeChild = ActiveChildProvider(profileService: const _StubProfileService());
+    if (withChild) {
+      activeChild.setActiveChild(const ChildProfile(childProfileId: 1, childName: '첫째'));
+    }
     final rewardProvider = RewardProvider(rewardService: _FakeRewardService());
 
     await tester.pumpWidget(
@@ -108,7 +110,9 @@ void main() {
   testWidgets('오늘 출석 전이면 도장 찍기 버튼이 활성화된다', (tester) async {
     await pumpScreen(tester, _FakeAttendanceService(monthWith()));
 
-    final button = tester.widget<ElevatedButton>(find.widgetWithText(ElevatedButton, '오늘의 출석 도장 찍기'));
+    final button = tester.widget<ElevatedButton>(
+      find.widgetWithText(ElevatedButton, '오늘의 출석 도장 찍기'),
+    );
     expect(button.onPressed, isNotNull);
   });
 
@@ -136,10 +140,60 @@ void main() {
   });
 
   testWidgets('불러오지 못하면 오류와 다시 시도 버튼을 보여준다', (tester) async {
-    final service = _FakeAttendanceService(monthWith())..monthlyError = const ApiException(message: '서버에 연결할 수 없어요.');
+    final service = _FakeAttendanceService(monthWith())
+      ..monthlyError = const ApiException(message: '서버에 연결할 수 없어요.');
     await pumpScreen(tester, service);
 
     expect(find.text('서버에 연결할 수 없어요.'), findsOneWidget);
     expect(find.widgetWithText(ElevatedButton, '다시 시도'), findsOneWidget);
+  });
+
+  testWidgets('자녀가 선택되지 않았으면 안내만 보여주고 다시 시도 버튼은 없다', (tester) async {
+    await pumpScreen(tester, _FakeAttendanceService(monthWith()), withChild: false);
+
+    expect(find.text('먼저 자녀 프로필을 선택해 주세요.'), findsOneWidget);
+    expect(find.text('다시 시도'), findsNothing);
+  });
+
+  testWidgets('자녀를 바꾼 직후 첫 프레임에는 이전 자녀의 출석을 보여주지 않는다', (tester) async {
+    final service = _FakeAttendanceService(monthWith(currentStreak: 5));
+    final provider = AttendanceProvider(attendanceService: service);
+    await provider.load(1); // 첫째 화면을 봤던 상태로 Provider에 값이 남아 있다.
+
+    final activeChild = ActiveChildProvider(profileService: const _StubProfileService())
+      ..setActiveChild(const ChildProfile(childProfileId: 2, childName: '둘째'));
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<ActiveChildProvider>.value(value: activeChild),
+          ChangeNotifierProvider<RewardProvider>.value(
+            value: RewardProvider(rewardService: _FakeRewardService()),
+          ),
+          ChangeNotifierProvider<AttendanceProvider>.value(value: provider),
+        ],
+        child: const MaterialApp(home: AttendanceScreen()),
+      ),
+    );
+
+    // 첫 프레임: 불러오기가 시작되기 전이므로 이전 자녀의 값 대신 로딩만 보여야 한다.
+    expect(find.textContaining('연속 5일'), findsNothing);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    await tester.pumpAndSettle();
+    expect(find.textContaining('연속 5일'), findsOneWidget);
+  });
+
+  testWidgets('이미 보여 주던 출석은 새로고침이 실패해도 지우지 않고 안내만 띄운다', (tester) async {
+    final service = _FakeAttendanceService(monthWith(currentStreak: 2));
+    await pumpScreen(tester, service);
+    expect(find.textContaining('연속 2일'), findsOneWidget);
+
+    service.monthlyError = const ApiException(message: '서버에 연결할 수 없어요.');
+    await tester.fling(find.byType(SingleChildScrollView), const Offset(0, 400), 1000);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('연속 2일'), findsOneWidget); // 출석 지도는 그대로
+    expect(find.text('서버에 연결할 수 없어요.'), findsOneWidget); // 스낵바
+    expect(find.text('다시 시도'), findsNothing);
   });
 }

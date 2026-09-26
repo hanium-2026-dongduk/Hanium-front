@@ -141,6 +141,52 @@ void main() {
     expect(find.text('보상 내역 보기'), findsOneWidget);
   });
 
+  testWidgets('좁은 화면·큰 글씨에서도 배지 이름이 두 줄이어도 넘치지 않는다', (tester) async {
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1.0;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    final badgeService = _FakeBadgeService()
+      ..summary = const BadgeSummary(
+        earnedCount: 1,
+        totalCount: 3,
+        badges: [
+          BadgeStatus(
+            badgeCode: 'a',
+            name: '아주 긴 이름의 출석 배지',
+            description: '설명',
+            iconKey: 'fire',
+            condition: BadgeCondition(type: 'streak_days', value: 10),
+            state: BadgeState.earned,
+          ),
+          BadgeStatus(
+            badgeCode: 'b',
+            name: '아주 긴 이름의 동화 배지',
+            description: '설명',
+            iconKey: 'book',
+            condition: BadgeCondition(type: 'story_read_total', value: 10),
+            state: BadgeState.locked,
+          ),
+          BadgeStatus(
+            badgeCode: 'c',
+            name: '아주 긴 이름의 퀴즈 배지',
+            description: '설명',
+            iconKey: 'star',
+            condition: BadgeCondition(type: 'quiz_count', value: 5),
+            state: BadgeState.locked,
+          ),
+        ],
+      );
+    await _pumpScreen(tester, rewardService: _FakeRewardService(), badgeService: badgeService);
+    await tester.drag(find.byType(ListView).first, const Offset(0, -300));
+    await tester.pumpAndSettle();
+
+    expect(find.text('아주 긴 이름의 출석 배지'), findsOneWidget);
+    expect(tester.takeException(), isNull); // RenderFlex overflow가 없어야 한다.
+  });
+
   testWidgets('최고 레벨이면 다음 레벨 안내 대신 축하 문구를 보여준다', (tester) async {
     final rewardService = _FakeRewardService()
       ..detail = const RewardDetail(

@@ -103,6 +103,23 @@ void main() {
     expect(provider.checkInError, isNull);
   });
 
+  test('조회 중에 도장을 찍어도 도장 이후의 현황으로 마무리한다', () async {
+    final service = _FakeAttendanceService();
+    final provider = AttendanceProvider(attendanceService: service);
+
+    final stale = provider.load(1); // 당겨서 새로고침 중
+    final staleCompleter = service.pending[1]!;
+    final checking = provider.checkIn(1);
+    await pumpEventQueue();
+    service.pending[1]!.complete(_month(1, streak: 3)); // 도장 이후 조회
+    await checking;
+    staleCompleter.complete(_month(1, streak: 2)); // 도장 이전 조회가 뒤늦게 도착
+    await stale;
+
+    expect(provider.month?.currentStreak, 3);
+    expect(provider.isLoading, isFalse);
+  });
+
   test('도장 찍기가 진행 중이면 다시 눌러도 요청을 겹치지 않는다', () async {
     final service = _FakeAttendanceService();
     final provider = AttendanceProvider(attendanceService: service);

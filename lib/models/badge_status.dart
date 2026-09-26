@@ -28,7 +28,7 @@ class BadgeCondition {
   String get hint => switch (type) {
     'attendance_total' => '출석을 $value번 하면 받을 수 있어요',
     'streak_days' => '$value일 연속으로 출석하면 받을 수 있어요',
-    'total_points' => '포인트를 $value점 모으면 받을 수 있어요',
+    'total_points' => '마법 토큰을 $value개 모으면 받을 수 있어요',
     'level' => '레벨 $value에 도달하면 받을 수 있어요',
     'mission_completed_total' => '미션을 $value번 완료하면 받을 수 있어요',
     'story_read_total' => '동화를 $value편 읽으면 받을 수 있어요',
