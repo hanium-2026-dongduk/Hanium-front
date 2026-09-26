@@ -30,7 +30,7 @@ class _RewardStatusScreenState extends State<RewardStatusScreen> {
 
   Future<void> _load() async {
     final id = _childProfileId;
-    if (id == null) return;
+    if (id == null || !mounted) return;
     await context.read<RewardStatusProvider>().load(id);
   }
 

@@ -30,7 +30,7 @@ class _LearningStatsScreenState extends State<LearningStatsScreen> {
 
   Future<void> _load() async {
     final id = _childProfileId;
-    if (id == null) return;
+    if (id == null || !mounted) return;
     await context.read<LearningStatsProvider>().load(id);
   }
 

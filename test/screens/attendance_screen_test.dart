@@ -109,7 +109,7 @@ void main() {
     expect(button.onPressed, isNotNull);
   });
 
-  testWidgets('도장을 찍으면 checkIn을 부르고 포인트 스낵바를 보여준다', (tester) async {
+  testWidgets('도장을 찍으면 checkIn을 부르고 축하 연출을 보여준다', (tester) async {
     final service = _FakeAttendanceService(monthWith())
       ..checkInResult = const AttendanceCheckResult(
         alreadyChecked: false,

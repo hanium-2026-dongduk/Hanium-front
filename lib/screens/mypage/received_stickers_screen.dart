@@ -37,7 +37,7 @@ class _ReceivedStickersScreenState extends State<ReceivedStickersScreen> {
 
   Future<void> _load() async {
     final id = _childProfileId;
-    if (id == null) return;
+    if (id == null || !mounted) return;
     await context.read<ReceivedStickerProvider>().load(id);
   }
 
