@@ -7,9 +7,11 @@ import 'core/token_storage.dart';
 import 'providers/active_child_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/reward_provider.dart';
+import 'providers/reward_status_provider.dart';
 import 'screens/auth_gate.dart';
 import 'services/attendance_service.dart';
 import 'services/auth_service.dart';
+import 'services/badge_service.dart';
 import 'services/mission_service.dart';
 import 'services/profile_service.dart';
 import 'services/reward_service.dart';
@@ -108,12 +110,19 @@ class _MyAppState extends State<MyApp> {
         Provider<TtsService>.value(value: _ttsService),
         ChangeNotifierProvider<ActiveChildProvider>.value(value: _activeChildProvider),
         ChangeNotifierProvider<RewardProvider>.value(value: _rewardProvider),
+        Provider<BadgeService>(create: (_) => BadgeService(_apiClient)),
+        // 보상 현황 화면(MP02) 전용. 화면을 열 때마다 새로 불러온다.
+        ChangeNotifierProvider<RewardStatusProvider>(
+          create: (context) => RewardStatusProvider(
+            rewardService: _rewardService,
+            badgeService: context.read<BadgeService>(),
+          ),
+        ),
       ],
       child: MaterialApp(
         title: 'Magic Book',
         theme: AppTheme.lightTheme, // theme.dart에서 정의한 테마 적용
         debugShowCheckedModeBanner: false, // 우측 상단 디버그(Debug) 띠 제거
-
         // 로그인 → 자녀 프로필 선택을 거쳐야 child_profile_id가 필요한 단어장/보상
         // API를 부를 수 있다. (ProfileListScreen에서 프로필을 고르면 MainScreen으로 이동)
         home: widget.isFirstLaunch ? const TutorialScreen() : const AuthGate(),
