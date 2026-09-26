@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,6 +10,7 @@ import '../providers/reward_provider.dart';
 import '../services/attendance_service.dart';
 import '../theme/theme.dart';
 import '../widgets/async_state_view.dart';
+import '../widgets/reward_celebration.dart';
 
 /// 출석 현황 화면. (P-GM-RW02 연속 학습 보상)
 class AttendanceScreen extends StatefulWidget {
@@ -78,12 +81,21 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
       await _load();
       if (!mounted) return;
 
-      if (result.pointsEarned > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✨ 출석 도장 쾅! 마법 토큰 ${result.pointsEarned}개를 받았어요!'),
-            backgroundColor: AppTheme.pastelGreen,
-            behavior: SnackBarBehavior.floating,
+      // 포인트가 바뀌었을 수 있으므로 메인 화면 토큰 표시를 먼저 갱신한다.
+      // 이때 레벨이 올랐는지도 함께 알 수 있어서, 축하 연출은 그 뒤에 띄운다.
+      final rewardProvider = context.read<RewardProvider>();
+      await rewardProvider.refresh(childProfileId);
+      if (!mounted) return;
+      final newLevel = rewardProvider.takeLevelUp();
+
+      if (result.pointsEarned > 0 || result.badgesAwarded.isNotEmpty || newLevel != null) {
+        // 연출이 닫힐 때까지 기다리지 않는다. (_isChecking을 오래 잡지 않기 위해)
+        unawaited(
+          showRewardCelebration(
+            context,
+            points: result.pointsEarned,
+            badgeCount: result.badgesAwarded.length,
+            newLevel: newLevel,
           ),
         );
       } else if (result.alreadyChecked) {
@@ -93,21 +105,6 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-      }
-
-      if (result.badgesAwarded.isNotEmpty && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('🏅 새 배지를 획득했어요! (${result.badgesAwarded.join(', ')})'),
-            backgroundColor: AppTheme.pastelPurple,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-
-      // 포인트가 바뀌었을 수 있으므로 메인 화면 토큰 표시도 갱신한다.
-      if (mounted) {
-        await context.read<RewardProvider>().refresh(childProfileId);
       }
     } on ApiException catch (error) {
       if (!mounted) return;

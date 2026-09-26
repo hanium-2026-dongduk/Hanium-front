@@ -29,7 +29,12 @@ class _FakeRewardService implements RewardService {
   Future<int> fetchPointBalance(int childProfileId) async => 0;
 
   @override
-  Future<RewardDetail> fetchDetail(int childProfileId) => throw UnimplementedError();
+  Future<RewardDetail> fetchDetail(int childProfileId) async => const RewardDetail(
+    childProfileId: 1,
+    points: 0,
+    level: 1,
+    streakDays: 0,
+  );
 
   @override
   Future<PageResult<RewardHistoryEntry>> fetchHistory(

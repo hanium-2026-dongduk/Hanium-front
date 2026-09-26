@@ -31,7 +31,9 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final points = context.watch<RewardProvider>().points;
+    final rewards = context.watch<RewardProvider>();
+    final points = rewards.points;
+    final level = rewards.level;
 
     return Scaffold(
       backgroundColor: AppTheme.navyColor,
@@ -67,6 +69,10 @@ class _MainScreenState extends State<MainScreen> {
                       const Icon(Icons.favorite, color: AppTheme.pastelPurple, size: 22),
                       const SizedBox(width: 8),
                       Text('$points', style: const TextStyle(color: AppTheme.navyColor, fontWeight: FontWeight.bold, fontSize: 16)),
+                      if (level > 0) ...[
+                        const SizedBox(width: 10),
+                        Text('Lv.$level', style: const TextStyle(color: AppTheme.pastelPurple, fontWeight: FontWeight.bold, fontSize: 14)),
+                      ],
                     ],
                   ),
                 ),
