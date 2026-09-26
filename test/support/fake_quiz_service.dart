@@ -18,6 +18,9 @@ class FakeQuizService implements QuizService {
   ApiException? fetchError;
   ApiException? submitError;
 
+  /// null이 아니면 generate가 이 Completer가 끝날 때까지 기다린다. (로딩 화면 확인용)
+  Completer<void>? generateGate;
+
   /// null이 아니면 submit이 이 Completer가 끝날 때까지 기다린다.
   Completer<void>? submitGate;
 
@@ -50,6 +53,7 @@ class FakeQuizService implements QuizService {
   @override
   Future<QuizGeneration> generate({required int childProfileId, required int storyId}) async {
     generateCalls++;
+    if (generateGate != null) await generateGate!.future;
     if (generateError != null) throw generateError!;
     return QuizGeneration(quizSetId: 7, status: 'ready', questionCount: questions.length);
   }
