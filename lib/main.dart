@@ -18,6 +18,7 @@ import 'services/badge_service.dart';
 import 'services/dashboard_service.dart';
 import 'services/mission_service.dart';
 import 'services/profile_service.dart';
+import 'services/quiz_service.dart';
 import 'services/reward_service.dart';
 import 'services/sticker_service.dart';
 import 'services/tts_service.dart';
@@ -130,6 +131,8 @@ class _MyAppState extends State<MyApp> {
         ),
         Provider<DashboardService>(create: (_) => DashboardService(_apiClient)),
         Provider<StickerService>(create: (_) => StickerService(_apiClient)),
+        // 퀴즈(QZ01~03). QuizProvider는 앱 전역이 아니라 퀴즈 화면이 열릴 때마다 만든다.
+        Provider<QuizService>(create: (_) => QuizService(_apiClient)),
         // 학습 통계(MP03)·받은 스티커(MP05) 화면 전용. 화면을 열 때마다 새로 불러온다.
         ChangeNotifierProvider<LearningStatsProvider>(
           create: (context) => LearningStatsProvider(
