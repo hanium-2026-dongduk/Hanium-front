@@ -46,7 +46,7 @@ class QuizProvider extends ChangeNotifier {
   String? get submitError => _submitError;
 
   /// 문항을 불러왔지만 하나도 없는 경우. (생성이 덜 끝났거나 서버 데이터가 비어 있음)
-  bool get isEmpty => !_isLoading && _loadError == null && _quiz != null && questions.isEmpty;
+  bool get isEmpty => !_isLoading && _loadError == null && questions.isEmpty;
 
   /// 채점이 끝났는지. 끝났다면 다시 풀거나 제출할 수 없다.
   bool get isSubmitted => _result != null;

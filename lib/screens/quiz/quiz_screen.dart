@@ -134,12 +134,19 @@ class _QuizViewState extends State<_QuizView> {
   Widget _buildBody(QuizProvider quiz) {
     if (quiz.isLoading) return const _QuizLoading();
 
+    // 빈 상태에도 다시 시도할 수 있어야 한다. (AsyncStateView는 오류일 때만 버튼을 보여준다.)
+    if (quiz.loadError == null && quiz.isEmpty) {
+      return CenteredMessage(
+        message: '퀴즈가 아직 준비되지 않았어요.\n조금 있다가 다시 해 볼까요?',
+        actionLabel: '다시 해 볼래요',
+        onAction: quiz.load,
+      );
+    }
+
     return AsyncStateView(
       isLoading: false,
       errorMessage: quiz.loadError,
       onRetry: quiz.load,
-      isEmpty: quiz.isEmpty,
-      emptyMessage: '퀴즈가 아직 준비되지 않았어요.\n조금 있다가 다시 해 볼까요?',
       contentBuilder: (_) => quiz.isSubmitted
           ? _QuizResultView(quiz: quiz, onDone: () => Navigator.of(context).maybePop())
           : _QuizQuestionView(
@@ -515,7 +522,11 @@ class _BottomBar extends StatelessWidget {
                     style: const TextStyle(color: AppTheme.pastelPink, fontSize: 14),
                   ),
                 ),
-              Row(
+              // 좁은 화면에서는 건너뛰기가 윗줄로 넘어가도록 Wrap을 쓴다.
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                runSpacing: 8,
                 children: [
                   TextButton(
                     onPressed: quiz.isSubmitting ? null : onSkip,
@@ -525,33 +536,40 @@ class _BottomBar extends StatelessWidget {
                       style: TextStyle(color: Colors.white70, fontSize: 14),
                     ),
                   ),
-                  const Spacer(),
-                  if (!quiz.isFirstQuestion)
-                    TextButton(
-                      onPressed: quiz.isSubmitting ? null : quiz.previous,
-                      style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
-                      child: const Text('이전', style: TextStyle(color: Colors.white, fontSize: 16)),
-                    ),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: !canProceed || quiz.isSubmitting
-                        ? null
-                        : (isLast ? onSubmit : quiz.next),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(140, 56),
-                      disabledBackgroundColor: Colors.white12,
-                      disabledForegroundColor: Colors.white38,
-                    ),
-                    child: quiz.isSubmitting
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 3,
-                              color: AppTheme.navyColor,
-                            ),
-                          )
-                        : Text(isLast ? '제출하기' : '다음 →'),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!quiz.isFirstQuestion)
+                        TextButton(
+                          onPressed: quiz.isSubmitting ? null : quiz.previous,
+                          style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+                          child: const Text(
+                            '이전',
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
+                        ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: !canProceed || quiz.isSubmitting
+                            ? null
+                            : (isLast ? onSubmit : quiz.next),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(140, 56),
+                          disabledBackgroundColor: Colors.white12,
+                          disabledForegroundColor: Colors.white38,
+                        ),
+                        child: quiz.isSubmitting
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                  color: AppTheme.navyColor,
+                                ),
+                              )
+                            : Text(isLast ? '제출하기' : '다음 →'),
+                      ),
+                    ],
                   ),
                 ],
               ),

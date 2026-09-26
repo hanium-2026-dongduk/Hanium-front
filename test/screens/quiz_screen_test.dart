@@ -323,11 +323,42 @@ void main() {
     expect(find.text('Q1 / 2'), findsOneWidget);
   });
 
-  testWidgets('문항이 하나도 없으면 준비 안내를 보여준다', (tester) async {
+  testWidgets('문항이 하나도 없으면 준비 안내와 다시 해 볼래요 버튼을 보여주고, 누르면 다시 불러온다', (tester) async {
     final service = FakeQuizService()..questions = const [];
     await _pumpQuiz(tester, quizService: service);
 
     expect(find.textContaining('퀴즈가 아직 준비되지 않았어요'), findsOneWidget);
+    expect(find.text('다시 해 볼래요'), findsOneWidget);
+
+    service.questions = FakeQuizService.defaultQuestions();
+    await tester.tap(find.text('다시 해 볼래요'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Q1 / 2'), findsOneWidget);
+    expect(service.generateCalls, 1); // 다시 불러와도 문항을 새로 만들지 않는다.
+    expect(service.fetchCalls, 2);
+  });
+
+  testWidgets('좁은 화면·큰 글씨에서도 하단 버튼이 넘치지 않는다', (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1.0;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await _pumpQuiz(tester);
+    // 작은 화면에서는 보기가 스크롤 영역 안에 있으므로 먼저 화면에 보이게 한다.
+    await tester.ensureVisible(find.text('Candy Forest'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Candy Forest'));
+    await tester.pump();
+    await tester.tap(find.text('다음 →'));
+    await tester.pumpAndSettle(); // 건너뛰기·이전·제출하기가 모두 보이는 마지막 문항
+
+    expect(find.text('퀴즈 건너뛰기'), findsOneWidget);
+    expect(find.text('이전'), findsOneWidget);
+    expect(find.text('제출하기'), findsOneWidget);
+    expect(tester.takeException(), isNull); // RenderFlex overflow가 없어야 한다.
   });
 
   testWidgets('자녀가 선택되지 않았으면 안내 문구를 보여주고 퀴즈를 만들지 않는다', (tester) async {
