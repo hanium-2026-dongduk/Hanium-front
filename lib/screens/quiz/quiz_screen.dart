@@ -11,6 +11,7 @@ import '../../services/quiz_service.dart';
 import '../../services/tts_service.dart';
 import '../../theme/theme.dart';
 import '../../widgets/async_state_view.dart';
+import '../../widgets/confirm_dialog.dart';
 import '../../widgets/reward_celebration.dart';
 
 /// 동화 확인 퀴즈. 응시(P-ED-QZ03)부터 채점 결과까지 한 화면에서 보여준다.
@@ -32,7 +33,13 @@ class QuizScreen extends StatelessWidget {
     if (childProfileId == null) {
       return Scaffold(
         appBar: AppBar(iconTheme: const IconThemeData(color: Colors.white)),
-        body: const SafeArea(child: CenteredMessage(message: '먼저 자녀 프로필을 선택해 주세요.')),
+        body: SafeArea(
+          child: CenteredMessage(
+            message: '먼저 자녀 프로필을 선택해 주세요.',
+            actionLabel: '돌아가기',
+            onAction: () => Navigator.of(context).maybePop(false),
+          ),
+        ),
       );
     }
 
@@ -76,11 +83,31 @@ class _QuizViewState extends State<_QuizView> {
   Future<void> _speak(String text) => _tts.speak(text);
 
   /// 뒤로가기·건너뛰기 모두 여기로 모인다. 채점까지 끝났는지를 돌려준다.
-  void _onPopInvoked(bool didPop, Object? result) {
+  Future<void> _onPopInvoked(bool didPop, Object? result) async {
     if (didPop) return;
     final quiz = context.read<QuizProvider>();
     // 제출 요청이 나간 상태로 나가면 결과를 놓쳐 재응시가 열리므로 기다린다.
-    if (quiz.isSubmitting) return;
+    if (quiz.isSubmitting) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(content: Text('채점하고 있어요. 잠깐만 기다려 주세요!')));
+      return;
+    }
+
+    // 고른 답이 있는 채로 나가려 하면 실수로 잃지 않도록 한 번 더 묻는다.
+    if (!quiz.isSubmitted && quiz.hasAnyAnswer) {
+      final leave = await showConfirmDialog(
+        context,
+        title: '퀴즈를 그만할까요?',
+        content: '지금까지 고른 답은 저장되지 않아요.',
+        cancelLabel: '계속 풀래요',
+        confirmLabel: '그만할래요',
+      );
+      if (!leave || !mounted) return;
+    }
+    // 확인창이 떠 있는 동안 상태가 바뀌었을 수 있어 다시 읽는다.
+    // 제출 중 안내가 다음 화면까지 남지 않게 한다.
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     Navigator.of(context).pop(quiz.isSubmitted);
   }
 
@@ -90,6 +117,7 @@ class _QuizViewState extends State<_QuizView> {
 
     final result = await quiz.submit();
     if (result == null || !mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
     // 포인트가 바뀌었으니 메인 화면 토큰 표시를 먼저 갱신한다.
     // 이때 레벨이 올랐는지도 알 수 있어서 축하 연출은 그 뒤에 띄운다.
@@ -401,52 +429,57 @@ class _OptionTile extends StatelessWidget {
       _OptionState.idle => (Colors.white24, Colors.white.withValues(alpha: 0.06)),
     };
 
-    return Material(
-      color: fill,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: border, width: state == _OptionState.idle ? 1.5 : 3),
-      ),
-      child: InkWell(
-        customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 72),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                _OptionBadge(number: number, state: state, borderColor: border),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+    final stateLabel = switch (state) {
+      _OptionState.selected => '선택했어요',
+      _OptionState.correct => '정답',
+      _OptionState.wrong => '내가 고른 답',
+      _ => null,
+    };
+
+    // '선택됨'은 selected 상태로 읽히므로 라벨에는 채점 표시만 넣는다.
+    final announced = state == _OptionState.selected ? null : stateLabel;
+
+    return Semantics(
+      button: onTap != null,
+      enabled: onTap != null,
+      selected: state == _OptionState.selected,
+      label: '$number번 $text${announced == null ? '' : ', $announced'}',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: Material(
+        color: fill,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: border, width: state == _OptionState.idle ? 1.5 : 3),
+        ),
+        child: InkWell(
+          customBorder: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 72),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  _OptionBadge(number: number, state: state, borderColor: border),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      text,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-                if (state == _OptionState.correct)
-                  const Text(
-                    '정답',
-                    style: TextStyle(
-                      color: AppTheme.pastelGreen,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                  if (stateLabel != null)
+                    Text(
+                      stateLabel,
+                      style: TextStyle(color: border, fontSize: 14, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                if (state == _OptionState.wrong)
-                  const Text(
-                    '내가 고른 답',
-                    style: TextStyle(
-                      color: AppTheme.pastelPink,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -464,26 +497,28 @@ class _OptionBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 오답에 ✕를 쓰면 아이에게 야단치는 느낌이라, 고른 답이라는 뜻의 부드러운 아이콘을 쓴다.
     final icon = switch (state) {
       _OptionState.correct => Icons.check,
-      _OptionState.wrong => Icons.close,
+      _OptionState.wrong => Icons.touch_app_outlined,
       _ => null,
     };
+    final isSelected = state == _OptionState.selected;
     return Container(
       width: 40,
       height: 40,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: 0.1),
+        color: isSelected ? AppTheme.yellowColor : Colors.white.withValues(alpha: 0.1),
         border: Border.all(color: borderColor, width: 2),
       ),
       child: icon != null
           ? Icon(icon, color: borderColor, size: 24)
           : Text(
               '$number',
-              style: const TextStyle(
-                color: Colors.white70,
+              style: TextStyle(
+                color: isSelected ? AppTheme.navyColor : Colors.white70,
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),

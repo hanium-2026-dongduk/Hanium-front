@@ -287,7 +287,7 @@ class _VocaScreenState extends State<VocaScreen> {
                   ),
                   OutlinedButton.icon(
                     onPressed: _showQuizNotReady,
-                    icon: const Icon(Icons.quiz, color: AppTheme.yellowColor),
+                    icon: const Icon(Icons.star, color: AppTheme.yellowColor),
                     label: const Text('즐겨찾기 퀴즈', style: TextStyle(color: Colors.white)),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(48, 48),

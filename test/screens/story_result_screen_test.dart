@@ -94,7 +94,11 @@ void main() {
 
     await tester.tap(find.text('퀴즈 풀기'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Candy Forest'));
+    await tester.pump();
     await tester.tap(find.text('퀴즈 건너뛰기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('그만할래요')); // 답을 골랐다면 실수로 나가지 않도록 확인창이 먼저 뜬다.
     await tester.pumpAndSettle();
 
     expect(find.byType(QuizScreen), findsNothing);

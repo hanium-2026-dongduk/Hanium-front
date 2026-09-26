@@ -54,6 +54,9 @@ class QuizProvider extends ChangeNotifier {
 
   int? selectedOptionId(int questionId) => _selectedOptionIds[questionId];
 
+  /// 하나라도 답을 골랐는지. 나갈 때 잃는 답이 있는지 판단하는 데 쓴다.
+  bool get hasAnyAnswer => _selectedOptionIds.isNotEmpty;
+
   bool get isCurrentAnswered {
     final question = currentQuestion;
     return question != null && _selectedOptionIds.containsKey(question.questionId);

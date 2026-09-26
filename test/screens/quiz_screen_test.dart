@@ -263,6 +263,7 @@ void main() {
     await tester.pump();
     expect(harness.popped, isFalse);
     expect(find.text('동화 확인 퀴즈'), findsOneWidget);
+    expect(find.text('채점하고 있어요. 잠깐만 기다려 주세요!'), findsOneWidget);
 
     gate.complete();
     await tester.pumpAndSettle();
@@ -297,15 +298,101 @@ void main() {
     expect(harness.poppedWith, isTrue);
   });
 
-  testWidgets('퀴즈 건너뛰기를 누르면 제출 없이 false를 돌려주고 닫힌다', (tester) async {
+  testWidgets('고른 답이 없으면 건너뛰기가 확인창 없이 바로 false를 돌려주고 닫힌다', (tester) async {
     final harness = await _pumpQuiz(tester);
 
     await tester.tap(find.text('퀴즈 건너뛰기'));
     await tester.pumpAndSettle();
 
+    expect(find.text('퀴즈를 그만할까요?'), findsNothing);
+    expect(harness.popped, isTrue);
+    expect(harness.poppedWith, isFalse);
+  });
+
+  testWidgets('답을 고른 뒤 건너뛰기를 누르면 확인창을 띄우고, 그만두면 제출 없이 false를 돌려주고 닫힌다', (tester) async {
+    final harness = await _pumpQuiz(tester);
+
+    await tester.tap(find.text('Candy Forest'));
+    await tester.pump();
+    await tester.tap(find.text('퀴즈 건너뛰기'));
+    await tester.pumpAndSettle();
+    expect(find.text('퀴즈를 그만할까요?'), findsOneWidget);
+    expect(harness.popped, isFalse); // 확인 전에는 닫히지 않는다.
+
+    await tester.tap(find.text('그만할래요'));
+    await tester.pumpAndSettle();
+
     expect(harness.popped, isTrue);
     expect(harness.poppedWith, isFalse);
     expect(harness.quizService.submitCalls, 0);
+  });
+
+  testWidgets('확인창에서 계속 풀래요를 누르면 퀴즈를 이어서 풀 수 있다', (tester) async {
+    final harness = await _pumpQuiz(tester);
+
+    await tester.tap(find.text('Candy Forest'));
+    await tester.pump();
+    await tester.tap(find.text('퀴즈 건너뛰기'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('계속 풀래요'));
+    await tester.pumpAndSettle();
+
+    expect(harness.popped, isFalse);
+    expect(find.text('퀴즈를 그만할까요?'), findsNothing);
+    expect(find.text('Q1 / 2'), findsOneWidget);
+    // 고른 답도 그대로 남아 있다.
+    expect(
+      tester.widget<ElevatedButton>(find.widgetWithText(ElevatedButton, '다음 →')).onPressed,
+      isNotNull,
+    );
+  });
+
+  testWidgets('시스템 뒤로가기도 답을 고른 뒤라면 확인창을 먼저 띄운다', (tester) async {
+    final harness = await _pumpQuiz(tester);
+
+    await tester.tap(find.text('Candy Forest'));
+    await tester.pump();
+    await tester.state<NavigatorState>(find.byType(Navigator)).maybePop();
+    await tester.pumpAndSettle();
+    expect(find.text('퀴즈를 그만할까요?'), findsOneWidget);
+    expect(harness.popped, isFalse);
+  });
+
+  testWidgets('불러오기에 실패한 상태에서는 확인창 없이 바로 닫힌다', (tester) async {
+    final service = FakeQuizService()
+      ..generateError = const ApiException(message: '퀴즈 생성에 실패했습니다.', statusCode: 502);
+    final harness = await _pumpQuiz(tester, quizService: service);
+
+    await tester.state<NavigatorState>(find.byType(Navigator)).maybePop();
+    await tester.pumpAndSettle();
+
+    expect(find.text('퀴즈를 그만할까요?'), findsNothing);
+    expect(harness.popped, isTrue);
+    expect(harness.poppedWith, isFalse);
+  });
+
+  testWidgets('고른 보기는 색뿐 아니라 글자로도 표시하고 스크린리더에도 알린다', (tester) async {
+    final handle = tester.ensureSemantics();
+    await _pumpQuiz(tester);
+
+    expect(find.text('선택했어요'), findsNothing);
+    await tester.tap(find.text('Candy Forest'));
+    await tester.pump();
+
+    expect(find.text('선택했어요'), findsOneWidget);
+    expect(
+      tester.getSemantics(find.byKey(const ValueKey('option-1001'))),
+      matchesSemantics(
+        label: '1번 Candy Forest',
+        isButton: true,
+        isSelected: true,
+        hasTapAction: true,
+        hasSelectedState: true,
+        isEnabled: true,
+        hasEnabledState: true,
+      ),
+    );
+    handle.dispose();
   });
 
   testWidgets('생성에 실패하면 오류와 다시 시도 버튼을 보여주고, 다시 시도하면 문항이 나온다', (tester) async {
@@ -367,5 +454,15 @@ void main() {
 
     expect(find.text('먼저 자녀 프로필을 선택해 주세요.'), findsOneWidget);
     expect(service.generateCalls, 0);
+  });
+
+  testWidgets('자녀가 선택되지 않았으면 돌아가기 버튼으로 나갈 수 있다', (tester) async {
+    final harness = await _pumpQuiz(tester, withChild: false);
+
+    await tester.tap(find.text('돌아가기'));
+    await tester.pumpAndSettle();
+
+    expect(harness.popped, isTrue);
+    expect(harness.poppedWith, isFalse);
   });
 }
