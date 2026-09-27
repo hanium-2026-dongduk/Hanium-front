@@ -17,7 +17,11 @@ dependencies:
   flutter_dotenv: ^6.0.1
   flutter_tts: ^4.2.5
   shared_preferences: ^2.5.5
+<<<<<<< HEAD
   just_audio: ^0.10.6
+=======
+  just_audio: ^0.9.42
+>>>>>>> 8e1a82bca123e7337fa8b92c7a6a89b6e8dbfca8
 
 dev_dependencies:
   flutter_test:

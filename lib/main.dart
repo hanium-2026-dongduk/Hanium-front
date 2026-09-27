@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:hanium_front/screens/main_screen.dart';
+import 'package:hanium_front/screens/reward_history_screen.dart';
 import 'package:provider/provider.dart';
 
 import 'core/api_client.dart';
