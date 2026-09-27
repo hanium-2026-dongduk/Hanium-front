@@ -17,11 +17,16 @@ class StoryResultProvider extends ChangeNotifier {
   final StoryCreatePayload? payload;
   final int? initialStoryId;
 
+  /// 자녀 나이. 서버 프롬프트의 난이도·어휘 수준에 반영되므로 생성 모드에서는
+  /// 반드시 자녀 프로필에서 읽어와 넘겨야 한다(`ActiveChildProvider.activeChild?.age`).
+  final int? childAge;
+
   StoryResultProvider({
     required StoryService storyService,
     required this.childProfileId,
     this.payload,
     this.initialStoryId,
+    this.childAge,
     bool initialIsFavorite = false,
   }) : _storyService = storyService,
        _isFavorite = initialIsFavorite,
@@ -78,6 +83,7 @@ class StoryResultProvider extends ChangeNotifier {
           characterId: characterId,
           background: p.location ?? '',
           mainEvent: p.event ?? '',
+          childAge: childAge,
         );
         _story = created;
         _storyId = created.storyId;

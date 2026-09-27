@@ -37,7 +37,8 @@ class StoryResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final childProfileId = context.read<ActiveChildProvider>().childProfileId;
+    final activeChild = context.read<ActiveChildProvider>();
+    final childProfileId = activeChild.childProfileId;
     if (childProfileId == null) {
       return Scaffold(
         appBar: AppBar(iconTheme: const IconThemeData(color: Colors.white)),
@@ -57,6 +58,8 @@ class StoryResultScreen extends StatelessWidget {
         childProfileId: childProfileId,
         payload: payload,
         initialStoryId: storyId,
+        // 서버 프롬프트의 난이도·어휘 수준에 반영되므로 생성 모드에서 자녀 나이를 넘긴다.
+        childAge: activeChild.activeChild?.age,
         initialIsFavorite: initialIsFavorite,
       ),
       child: const _StoryResultView(),
@@ -177,14 +180,16 @@ class _StoryResultViewState extends State<_StoryResultView> {
         ],
       ),
       body: SafeArea(
-        child: AsyncStateView(
-          isLoading: provider.isLoading,
-          errorMessage: provider.loadError,
-          onRetry: provider.load,
-          isEmpty: provider.story?.pages.isEmpty ?? false,
-          emptyMessage: '표시할 동화 내용이 없어요.',
-          contentBuilder: (context) => _buildContent(context, provider),
-        ),
+        child: provider.isLoading
+            ? _StoryLoading(isCreating: provider.payload != null)
+            : AsyncStateView(
+                isLoading: false,
+                errorMessage: provider.loadError,
+                onRetry: provider.load,
+                isEmpty: provider.story?.pages.isEmpty ?? false,
+                emptyMessage: '표시할 동화 내용이 없어요.',
+                contentBuilder: (context) => _buildContent(context, provider),
+              ),
       ),
     );
   }
@@ -380,6 +385,39 @@ class _StoryResultViewState extends State<_StoryResultView> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 동화 생성·조회가 오래 걸릴 수 있어(생성은 최대 2분 가까이) 멈춘 게 아니라는
+/// 안내를 함께 보여준다. `quiz_screen.dart`의 `_QuizLoading`과 같은 자리다.
+class _StoryLoading extends StatelessWidget {
+  final bool isCreating;
+
+  const _StoryLoading({required this.isCreating});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(color: AppTheme.yellowColor),
+          const SizedBox(height: 20),
+          Text(
+            isCreating ? '마법사가 동화를 만들고 있어요...' : '동화를 불러오고 있어요...',
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+          if (isCreating) ...[
+            const SizedBox(height: 8),
+            const Text(
+              '그림과 목소리까지 준비하느라 1~2분 정도 걸릴 수 있어요.',
+              style: TextStyle(color: Colors.white38, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
       ),
     );
   }

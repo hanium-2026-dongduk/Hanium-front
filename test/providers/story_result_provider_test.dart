@@ -23,6 +23,7 @@ void main() {
         storyService: service,
         childProfileId: 3,
         payload: payload,
+        childAge: 7,
       );
 
       expect(provider.isLoading, isTrue);
@@ -33,12 +34,13 @@ void main() {
       expect(provider.storyId, 42);
       expect(provider.story?.title, 'The Rabbit Adventure');
       expect(provider.choices, ['간다', '멈춘다']);
+      // 서버 프롬프트 난이도에 쓰이므로 자녀 나이가 함께 전달돼야 한다.
       expect(service.lastCreateArgs, {
         'childProfileId': 3,
         'characterId': 9,
         'background': '신비로운 숲',
         'mainEvent': '숨겨진 보물 찾기',
-        'childAge': null,
+        'childAge': 7,
       });
 
       provider.dispose();
