@@ -9,6 +9,7 @@ import 'package:hanium_front/providers/active_child_provider.dart';
 import 'package:hanium_front/providers/reward_provider.dart';
 import 'package:hanium_front/screens/library_screen.dart';
 import 'package:hanium_front/screens/mypage/my_page_screen.dart';
+import 'package:hanium_front/screens/story_creation_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -41,7 +42,10 @@ class _MainScreenState extends State<MainScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('✨ Magic Book', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          '✨ Magic Book',
+          style: TextStyle(color: Colors.white),
+        ),
         actions: [
           // 아동 UX 기준(48dp) 터치 영역을 맞춘다.
           IconButton(
@@ -57,7 +61,9 @@ class _MainScreenState extends State<MainScreen> {
             borderRadius: BorderRadius.circular(30),
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => const RewardHistoryScreen()),
+              MaterialPageRoute(
+                builder: (context) => const RewardHistoryScreen(),
+              ),
             ),
             // 알약 모양 배지 자체는 얇지만, 터치 영역은 아동 UX 기준(48dp)을
             // 만족하도록 보이지 않는 여백으로 감싼다.
@@ -71,18 +77,40 @@ class _MainScreenState extends State<MainScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(30),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 6, offset: const Offset(0, 3)),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
                     ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.monetization_on, color: AppTheme.yellowColor, size: 22),
+                      const Icon(
+                        Icons.monetization_on,
+                        color: AppTheme.yellowColor,
+                        size: 22,
+                      ),
                       const SizedBox(width: 8),
-                      Text('$points', style: const TextStyle(color: AppTheme.navyColor, fontWeight: FontWeight.bold, fontSize: 16)),
+                      Text(
+                        '$points',
+                        style: const TextStyle(
+                          color: AppTheme.navyColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
                       if (level > 0) ...[
                         const SizedBox(width: 10),
-                        Text('Lv.$level', style: const TextStyle(color: AppTheme.pastelPurple, fontWeight: FontWeight.bold, fontSize: 14)),
+                        Text(
+                          'Lv.$level',
+                          style: const TextStyle(
+                            color: AppTheme.pastelPurple,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
                       ],
                     ],
                   ),
@@ -103,7 +131,24 @@ class _MainScreenState extends State<MainScreen> {
 
               Row(
                 children: [
-                  Expanded(child: _buildSquareCard('동화\n생성하기', Icons.auto_awesome, AppTheme.pastelBlue)),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const StoryCreationScreen(),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(24),
+                      child: _buildSquareCard(
+                        '동화\n생성하기',
+                        Icons.auto_awesome,
+                        AppTheme.pastelBlue,
+                      ),
+                    ),
+                  ),
                   const SizedBox(width: 16),
 
                   // 노란색 학습하기 버튼
@@ -113,16 +158,28 @@ class _MainScreenState extends State<MainScreen> {
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const LibraryScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const LibraryScreen(),
+                          ),
                         );
                       },
                       borderRadius: BorderRadius.circular(24),
-                      child: _buildSquareCard('학습하기', Icons.menu_book, AppTheme.yellowColor),
+                      child: _buildSquareCard(
+                        '학습하기',
+                        Icons.menu_book,
+                        AppTheme.yellowColor,
+                      ),
                     ),
                   ),
 
                   const SizedBox(width: 16),
-                  Expanded(child: _buildSquareCard('등장인물\n관리하기', Icons.groups, AppTheme.pastelPink)),
+                  Expanded(
+                    child: _buildSquareCard(
+                      '등장인물\n관리하기',
+                      Icons.groups,
+                      AppTheme.pastelPink,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 40),
@@ -131,7 +188,9 @@ class _MainScreenState extends State<MainScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const MissionScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const MissionScreen(),
+                    ),
                   );
                 },
                 borderRadius: BorderRadius.circular(30),
@@ -144,9 +203,20 @@ class _MainScreenState extends State<MainScreen> {
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.flag_circle, color: AppTheme.navyColor, size: 28),
+                      Icon(
+                        Icons.flag_circle,
+                        color: AppTheme.navyColor,
+                        size: 28,
+                      ),
                       SizedBox(width: 10),
-                      Text("Today's Mission", style: TextStyle(color: AppTheme.navyColor, fontWeight: FontWeight.bold, fontSize: 20)),
+                      Text(
+                        "Today's Mission",
+                        style: TextStyle(
+                          color: AppTheme.navyColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -156,21 +226,35 @@ class _MainScreenState extends State<MainScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildActionCard('Attendance', Icons.calendar_month, Colors.white, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AttendanceScreen()),
-                      );
-                    }),
+                    child: _buildActionCard(
+                      'Attendance',
+                      Icons.calendar_month,
+                      Colors.white,
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AttendanceScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: _buildActionCard('Word Quiz', Icons.quiz_outlined, Colors.white, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const VocaScreen()),
-                      );
-                    }),
+                    child: _buildActionCard(
+                      'Word Quiz',
+                      Icons.quiz_outlined,
+                      Colors.white,
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const VocaScreen(),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -181,48 +265,70 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  // 탭 처리는 호출하는 쪽이 InkWell로 감싸서 한다. 여기서 또 InkWell로 감싸면
+  // 안쪽 InkWell이 탭을 먼저 먹어 바깥 onTap이 눌리지 않는다.
   Widget _buildSquareCard(String title, IconData icon, Color bgColor) {
-    return InkWell(
-      onTap: () {},
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        height: 140,
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(color: bgColor.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6)),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppTheme.navyColor, fontWeight: FontWeight.bold, fontSize: 16, height: 1.2),
+    return Container(
+      height: 140,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: bgColor.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppTheme.navyColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              height: 1.2,
             ),
-            const SizedBox(height: 16),
-            Icon(icon, color: AppTheme.navyColor, size: 36),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          Icon(icon, color: AppTheme.navyColor, size: 36),
+        ],
       ),
     );
   }
 
-  Widget _buildActionCard(String title, IconData icon, Color bgColor, VoidCallback onTap) {
+  Widget _buildActionCard(
+    String title,
+    IconData icon,
+    Color bgColor,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(20),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: AppTheme.navyColor, size: 32),
             const SizedBox(height: 12),
-            Text(title, style: const TextStyle(color: AppTheme.navyColor, fontWeight: FontWeight.bold, fontSize: 15)),
+            Text(
+              title,
+              style: const TextStyle(
+                color: AppTheme.navyColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
           ],
         ),
       ),
