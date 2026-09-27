@@ -24,9 +24,7 @@ class _StoryKeywordScreenState extends State<StoryKeywordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('STEP 2: 상세 스토리 입력'),
-      ),
+      appBar: AppBar(title: const Text('STEP 2: 상세 스토리 입력')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 700),
@@ -44,12 +42,18 @@ class _StoryKeywordScreenState extends State<StoryKeywordScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline, color: AppTheme.yellowColor),
+                      const Icon(
+                        Icons.info_outline,
+                        color: AppTheme.yellowColor,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           '선택한 배경: ${widget.payload.location}\n선택한 사건: ${widget.payload.event}',
-                          style: const TextStyle(color: Colors.white70, height: 1.5),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            height: 1.5,
+                          ),
                         ),
                       ),
                     ],
@@ -59,12 +63,21 @@ class _StoryKeywordScreenState extends State<StoryKeywordScreen> {
 
                 const Text(
                   '어떤 이야기를 만들어볼까요?',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   '팁: "공룡과 친구가 되는 이야기"처럼 짧게 써도 좋아요!',
                   style: TextStyle(color: Colors.white54, fontSize: 12),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  '🚧 지금은 배경·사건만 동화에 반영돼요. 자세한 이야기 반영은 곧 추가될 예정이에요.',
+                  style: TextStyle(color: Colors.white38, fontSize: 12),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -73,7 +86,8 @@ class _StoryKeywordScreenState extends State<StoryKeywordScreen> {
                   maxLines: 4,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: '비행기 조종사가 된 우리 아이가 구름 나라에 가서 길을 잃은 아기 천사를 도와주는 이야기...',
+                    hintText:
+                        '비행기 조종사가 된 우리 아이가 구름 나라에 가서 길을 잃은 아기 천사를 도와주는 이야기...',
                     hintStyle: const TextStyle(color: Colors.white30),
                     filled: true,
                     fillColor: Colors.white.withOpacity(0.05),
@@ -98,13 +112,17 @@ class _StoryKeywordScreenState extends State<StoryKeywordScreen> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => StoryResultScreen(payload: widget.payload),
+                          builder: (context) =>
+                              StoryResultScreen(payload: widget.payload),
                         ),
                       );
                     },
                     child: const Text(
                       '✨ 동화 마법 부리기',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),

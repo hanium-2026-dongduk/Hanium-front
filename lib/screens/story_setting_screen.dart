@@ -19,9 +19,7 @@ class _StorySettingScreenState extends State<StorySettingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('STEP 1: 주제 고르기'),
-      ),
+      appBar: AppBar(title: const Text('STEP 1: 주제 고르기')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 700),
@@ -59,19 +57,30 @@ class _StorySettingScreenState extends State<StorySettingScreen> {
                   height: 60,
                   child: ElevatedButton(
                     onPressed: () {
+                      if (_selectedLocation.isEmpty || _selectedEvent.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('배경과 사건을 하나씩 골라 주세요!')),
+                        );
+                        return;
+                      }
+
                       widget.payload.location = _selectedLocation;
                       widget.payload.event = _selectedEvent;
 
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => StoryKeywordScreen(payload: widget.payload),
+                          builder: (context) =>
+                              StoryKeywordScreen(payload: widget.payload),
                         ),
                       );
                     },
                     child: const Text(
                       '다음',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -86,12 +95,18 @@ class _StorySettingScreenState extends State<StorySettingScreen> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+      style: const TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
+      ),
     );
   }
 
   Widget _buildCircleSelectBtn(String label, IconData icon, bool isLocation) {
-    bool isSelected = isLocation ? _selectedLocation == label : _selectedEvent == label;
+    bool isSelected = isLocation
+        ? _selectedLocation == label
+        : _selectedEvent == label;
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -106,8 +121,14 @@ class _StorySettingScreenState extends State<StorySettingScreen> {
         children: [
           CircleAvatar(
             radius: 40,
-            backgroundColor: isSelected ? AppTheme.yellowColor : Colors.white.withOpacity(0.1),
-            child: Icon(icon, size: 36, color: isSelected ? AppTheme.navyColor : Colors.white),
+            backgroundColor: isSelected
+                ? AppTheme.yellowColor
+                : Colors.white.withOpacity(0.1),
+            child: Icon(
+              icon,
+              size: 36,
+              color: isSelected ? AppTheme.navyColor : Colors.white,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
