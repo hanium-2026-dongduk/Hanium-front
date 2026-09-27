@@ -213,7 +213,7 @@ class _StoryResultViewState extends State<_StoryResultView> {
                   height: 400,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: ClipRRect(
@@ -289,7 +289,7 @@ class _StoryResultViewState extends State<_StoryResultView> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: _isPlaying
-                            ? Colors.white.withOpacity(0.1)
+                            ? Colors.white.withValues(alpha:0.1)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -361,7 +361,7 @@ class _StoryResultViewState extends State<_StoryResultView> {
                           child: ElevatedButton(
                             onPressed: null,
                             style: ElevatedButton.styleFrom(
-                              disabledBackgroundColor: Colors.white.withOpacity(
+                              disabledBackgroundColor: Colors.white.withValues(alpha:
                                 0.2,
                               ),
                               disabledForegroundColor: Colors.white54,
