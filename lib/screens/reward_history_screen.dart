@@ -141,7 +141,7 @@ class _RewardHistoryScreenState extends State<RewardHistoryScreen> {
         child: Column(
           children: [
             _buildFilterChips(),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _loadFirstPage,
@@ -160,7 +160,7 @@ class _RewardHistoryScreenState extends State<RewardHistoryScreen> {
                       if (index >= _entries.length) {
                         return const Padding(
                           padding: EdgeInsets.symmetric(vertical: 16),
-                          child: Center(child: CircularProgressIndicator()),
+                          child: Center(child: CircularProgressIndicator(color: AppTheme.yellowColor)),
                         );
                       }
                       return _buildHistoryTile(_entries[index]);
@@ -177,34 +177,54 @@ class _RewardHistoryScreenState extends State<RewardHistoryScreen> {
 
   Widget _buildFilterChips() {
     return SizedBox(
-      height: 48,
+      height: 40,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         children: [
-          _buildFilterChip(null, '전체'),
-          for (final reason in RewardReason.values) _buildFilterChip(reason, reason.label),
+          _buildCustomChip(null, '전체'),
+          for (final reason in RewardReason.values) _buildCustomChip(reason, reason.label),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(RewardReason? reason, String label) {
+  // ✨ 이미지 디자인에 맞춰 하얀 배경/네이비 텍스트 적용
+  Widget _buildCustomChip(RewardReason? reason, String label) {
     final selected = _selectedReason == reason;
+
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => _selectReason(reason),
-        selectedColor: AppTheme.yellowColor,
-        backgroundColor: Colors.white.withValues(alpha: 0.08),
-        labelStyle: TextStyle(
-          color: selected ? AppTheme.navyColor : Colors.white70,
-          fontWeight: FontWeight.bold,
+      child: InkWell(
+        onTap: () => _selectReason(reason),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            // 선택 시 노란색, 미선택 시 하얀색 배경
+            color: selected ? AppTheme.yellowColor : Colors.white,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (selected) ...[
+                const Icon(Icons.check, color: AppTheme.navyColor, size: 16),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: const TextStyle(
+                  // 선택 여부 상관없이 글씨는 네이비색 고정
+                  color: AppTheme.navyColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
         ),
-        checkmarkColor: AppTheme.navyColor,
-        side: BorderSide(color: selected ? Colors.transparent : Colors.white24),
       ),
     );
   }
