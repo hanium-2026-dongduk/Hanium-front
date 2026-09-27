@@ -1,36 +1,68 @@
 import 'package:flutter/material.dart';
-import 'package:hanium_front/theme/theme.dart';
+import 'package:provider/provider.dart';
 
-class LibraryScreen extends StatefulWidget {
+import 'package:hanium_front/models/story.dart';
+import 'package:hanium_front/providers/active_child_provider.dart';
+import 'package:hanium_front/providers/library_provider.dart';
+import 'package:hanium_front/screens/story_result_screen.dart';
+import 'package:hanium_front/services/story_service.dart';
+import 'package:hanium_front/theme/theme.dart';
+import 'package:hanium_front/widgets/async_state_view.dart';
+
+/// 표지 이미지가 없어서(back#40 4번) 그 대신 돌려 보여주는 아이콘들.
+const _coverIcons = [
+  Icons.auto_stories,
+  Icons.nightlight_round,
+  Icons.cloud,
+  Icons.park,
+  Icons.sailing,
+  Icons.rocket_launch,
+];
+
+/// 내 라이브러리. (P-LB01~05)
+class LibraryScreen extends StatelessWidget {
   const LibraryScreen({super.key});
 
   @override
-  State<LibraryScreen> createState() => _LibraryScreenState();
+  Widget build(BuildContext context) {
+    final childProfileId = context.read<ActiveChildProvider>().childProfileId;
+    if (childProfileId == null) {
+      return Scaffold(
+        backgroundColor: AppTheme.navyColor,
+        appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+        body: SafeArea(
+          child: CenteredMessage(
+            message: '먼저 자녀 프로필을 선택해 주세요.',
+            actionLabel: '돌아가기',
+            onAction: () => Navigator.of(context).maybePop(),
+          ),
+        ),
+      );
+    }
+
+    return ChangeNotifierProvider<LibraryProvider>(
+      create: (context) => LibraryProvider(
+        storyService: context.read<StoryService>(),
+        childProfileId: childProfileId,
+      )..load(),
+      child: const _LibraryView(),
+    );
+  }
 }
 
-class _LibraryScreenState extends State<LibraryScreen> {
-  final List<Map<String, dynamic>> _stories = [
-    {'id': '1', 'title': 'A Sweet Bedtime Story', 'date': DateTime(2026, 8, 25), 'cover': Icons.nightlight_round, 'isFavorite': false},
-    {'id': '2', 'title': 'The Cloud Hopper', 'date': DateTime(2026, 8, 24), 'cover': Icons.cloud, 'isFavorite': true},
-    {'id': '3', 'title': 'The Magical Treehouse', 'date': DateTime(2026, 8, 20), 'cover': Icons.park, 'isFavorite': false},
-    {'id': '4', 'title': 'The Village Project', 'date': DateTime(2026, 8, 15), 'cover': Icons.house, 'isFavorite': false},
-    {'id': '5', 'title': 'Rafting to a New Land', 'date': DateTime(2026, 8, 10), 'cover': Icons.sailing, 'isFavorite': true},
-    {'id': '6', 'title': 'My Secret Garden', 'date': DateTime(2026, 8, 5), 'cover': Icons.local_florist, 'isFavorite': false},
-    {'id': '7', 'title': 'Space Adventure', 'date': DateTime(2026, 8, 1), 'cover': Icons.rocket_launch, 'isFavorite': true},
-    {'id': '8', 'title': 'Dinosaur Friends', 'date': DateTime(2026, 7, 28), 'cover': Icons.pets, 'isFavorite': false},
-    {'id': '9', 'title': 'Ocean Explorer', 'date': DateTime(2026, 7, 20), 'cover': Icons.water, 'isFavorite': false},
-    {'id': '10', 'title': 'The Little Chef', 'date': DateTime(2026, 7, 15), 'cover': Icons.restaurant, 'isFavorite': true},
-    {'id': '11', 'title': 'Magic Train', 'date': DateTime(2026, 7, 10), 'cover': Icons.train, 'isFavorite': false},
-    {'id': '12', 'title': 'Winter Wonderland', 'date': DateTime(2026, 7, 5), 'cover': Icons.ac_unit, 'isFavorite': false},
-  ];
+class _LibraryView extends StatefulWidget {
+  const _LibraryView();
 
-  String _sortOption = '최신순';
-  bool _showOnlyFavorites = false;
+  @override
+  State<_LibraryView> createState() => _LibraryViewState();
+}
+
+class _LibraryViewState extends State<_LibraryView> {
   bool _isSearching = false;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
-  // ✨ 삭제 모드 상태 변수 추가
+  // 삭제 모드 상태 변수
   bool _isDeleteMode = false;
 
   @override
@@ -39,62 +71,95 @@ class _LibraryScreenState extends State<LibraryScreen> {
     super.dispose();
   }
 
-  // 삭제 확인 팝업 메서드
-  void _showDeleteConfirmDialog(Map<String, dynamic> story) {
-    showDialog(
+  // 삭제 확인 팝업
+  Future<void> _showDeleteConfirmDialog(StorySummary story) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext ctx) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('동화 삭제', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.navyColor)),
-          content: Text('\'${story['title']}\'를 라이브러리에서 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.',
-              style: const TextStyle(fontSize: 14, height: 1.4)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            '동화 삭제',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppTheme.navyColor,
+            ),
+          ),
+          content: Text(
+            '\'${story.title}\'를 라이브러리에서 삭제하시겠습니까?\n삭제 후에는 복구할 수 없습니다.',
+            style: const TextStyle(fontSize: 14, height: 1.4),
+          ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
+              onPressed: () => Navigator.of(ctx).pop(false),
               child: const Text('취소', style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-              onPressed: () {
-                setState(() {
-                  _stories.removeWhere((element) => element['id'] == story['id']);
-                });
-                Navigator.of(ctx).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('동화가 삭제되었습니다.'), duration: Duration(seconds: 2)),
-                );
-              },
-              child: const Text('삭제', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text(
+                '삭제',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         );
       },
     );
+    if (confirmed != true || !mounted) return;
+
+    final ok = await context.read<LibraryProvider>().deleteStory(story.storyId);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? '동화가 삭제되었습니다.' : '삭제에 실패했어요. 다시 시도해 주세요.')),
+    );
+  }
+
+  Future<void> _toggleFavorite(
+    LibraryProvider provider,
+    StorySummary story,
+  ) async {
+    final ok = await provider.toggleFavorite(story);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('즐겨찾기 변경에 실패했어요.')));
+    }
+  }
+
+  void _openStory(StorySummary story) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StoryResultScreen(
+          storyId: story.storyId,
+          initialIsFavorite: story.isFavorite,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    List<Map<String, dynamic>> displayedStories = List.from(_stories);
-
-    if (_showOnlyFavorites) {
-      displayedStories = displayedStories.where((story) => story['isFavorite'] == true).toList();
-    }
-
-    if (_searchQuery.isNotEmpty) {
-      displayedStories = displayedStories.where((story) {
-        final title = story['title'].toString().toLowerCase();
-        return title.contains(_searchQuery.toLowerCase());
-      }).toList();
-    }
-
-    displayedStories.sort((a, b) {
-      if (_sortOption == '최신순') {
-        return b['date'].compareTo(a['date']);
-      } else {
-        return a['date'].compareTo(b['date']);
-      }
-    });
+    final provider = context.watch<LibraryProvider>();
+    final displayedStories = _searchQuery.isEmpty
+        ? provider.stories
+        : provider.stories
+              .where(
+                (s) =>
+                    s.title.toLowerCase().contains(_searchQuery.toLowerCase()),
+              )
+              .toList();
 
     return Scaffold(
       backgroundColor: AppTheme.navyColor,
@@ -103,21 +168,23 @@ class _LibraryScreenState extends State<LibraryScreen> {
         elevation: 0,
         title: _isSearching
             ? TextField(
-          controller: _searchController,
-          autofocus: true,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            hintText: '동화 제목을 검색하세요...',
-            hintStyle: TextStyle(color: Colors.white54),
-            border: InputBorder.none,
-          ),
-          onChanged: (value) {
-            setState(() {
-              _searchQuery = value;
-            });
-          },
-        )
-            : const Text('MY LIBRARY', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                controller: _searchController,
+                autofocus: true,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: '동화 제목을 검색하세요...',
+                  hintStyle: TextStyle(color: Colors.white54),
+                  border: InputBorder.none,
+                ),
+                onChanged: (value) => setState(() => _searchQuery = value),
+              )
+            : const Text(
+                'MY LIBRARY',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
@@ -134,14 +201,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
           IconButton(
             icon: Icon(
-              _showOnlyFavorites ? Icons.favorite : Icons.favorite_border,
-              color: _showOnlyFavorites ? AppTheme.pastelPink : Colors.white,
+              provider.showOnlyFavorites
+                  ? Icons.favorite
+                  : Icons.favorite_border,
+              color: provider.showOnlyFavorites
+                  ? AppTheme.pastelPink
+                  : Colors.white,
             ),
-            onPressed: () {
-              setState(() {
-                _showOnlyFavorites = !_showOnlyFavorites;
-              });
-            },
+            onPressed: () =>
+                provider.setShowOnlyFavorites(!provider.showOnlyFavorites),
           ),
           // 삭제 모드 토글 버튼
           IconButton(
@@ -149,11 +217,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               _isDeleteMode ? Icons.delete_forever : Icons.delete_outline,
               color: _isDeleteMode ? Colors.redAccent : Colors.white,
             ),
-            onPressed: () {
-              setState(() {
-                _isDeleteMode = !_isDeleteMode;
-              });
-            },
+            onPressed: () => setState(() => _isDeleteMode = !_isDeleteMode),
           ),
         ],
       ),
@@ -161,38 +225,54 @@ class _LibraryScreenState extends State<LibraryScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 8.0,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // 삭제 모드 활성화 시 안내 텍스트
                   _isDeleteMode
-                      ? const Text('삭제할 동화를 선택하세요.', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold))
+                      ? const Text(
+                          '삭제할 동화를 선택하세요.',
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
                       : const SizedBox.shrink(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: _sortOption,
+                        value: provider.sortOption,
                         dropdownColor: AppTheme.navyColor,
-                        icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white70),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'CookieRun'),
-                        items: ['최신순', '오래된순'].map((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Text(value),
-                          );
-                        }).toList(),
-                        onChanged: (String? newValue) {
-                          if (newValue != null) {
-                            setState(() {
-                              _sortOption = newValue;
-                            });
-                          }
+                        icon: const Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Colors.white70,
+                        ),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'CookieRun',
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'latest', child: Text('최신순')),
+                          DropdownMenuItem(
+                            value: 'oldest',
+                            child: Text('오래된순'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) provider.setSortOption(value);
                         },
                       ),
                     ),
@@ -201,22 +281,37 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
             ),
             Expanded(
-              child: displayedStories.isEmpty
-                  ? const Center(
-                child: Text('해당하는 동화가 없습니다.', style: TextStyle(color: Colors.white54, fontSize: 16)),
-              )
-                  : GridView.builder(
-                padding: const EdgeInsets.only(left: 32.0, right: 32.0, top: 16.0, bottom: 40.0),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 4,
-                  crossAxisSpacing: 28,
-                  mainAxisSpacing: 40,
-                  childAspectRatio: 0.68,
-                ),
-                itemCount: displayedStories.length,
-                itemBuilder: (context, index) {
-                  return _buildStoryCard(displayedStories[index]);
-                },
+              child: AsyncStateView(
+                isLoading: provider.isLoading,
+                errorMessage: provider.loadError,
+                onRetry: provider.load,
+                isEmpty: provider.isEmpty,
+                emptyMessage: '아직 만든 동화가 없어요.\n첫 동화를 만들어 볼까요?',
+                contentBuilder: (context) => displayedStories.isEmpty
+                    ? const Center(
+                        child: Text(
+                          '해당하는 동화가 없습니다.',
+                          style: TextStyle(color: Colors.white54, fontSize: 16),
+                        ),
+                      )
+                    : GridView.builder(
+                        padding: const EdgeInsets.only(
+                          left: 32.0,
+                          right: 32.0,
+                          top: 16.0,
+                          bottom: 40.0,
+                        ),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 4,
+                              crossAxisSpacing: 28,
+                              mainAxisSpacing: 40,
+                              childAspectRatio: 0.68,
+                            ),
+                        itemCount: displayedStories.length,
+                        itemBuilder: (context, index) =>
+                            _buildStoryCard(provider, displayedStories[index]),
+                      ),
               ),
             ),
           ],
@@ -225,7 +320,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  Widget _buildStoryCard(Map<String, dynamic> story) {
+  Widget _buildStoryCard(LibraryProvider provider, StorySummary story) {
+    final coverIcon = _coverIcons[story.storyId % _coverIcons.length];
+    final isTogglingFavorite = provider.isTogglingFavorite(story.storyId);
+    final isDeleting = provider.isDeleting(story.storyId);
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -236,18 +335,27 @@ class _LibraryScreenState extends State<LibraryScreen> {
           bottomRight: Radius.circular(16),
         ),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 12, offset: const Offset(6, 8)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 12,
+            offset: const Offset(6, 8),
+          ),
         ],
       ),
       child: Stack(
         children: [
           Positioned(
-            left: 0, top: 0, bottom: 0,
+            left: 0,
+            top: 0,
+            bottom: 0,
             child: Container(
               width: 14,
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.08),
-                borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), bottomLeft: Radius.circular(4)),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(4),
+                  bottomLeft: Radius.circular(4),
+                ),
               ),
             ),
           ),
@@ -262,25 +370,43 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       margin: const EdgeInsets.only(left: 14),
                       decoration: const BoxDecoration(
                         color: AppTheme.pastelBlue,
-                        borderRadius: BorderRadius.only(topRight: Radius.circular(16)),
+                        borderRadius: BorderRadius.only(
+                          topRight: Radius.circular(16),
+                        ),
                       ),
                       child: Center(
-                        child: Icon(story['cover'], size: 64, color: AppTheme.navyColor.withOpacity(0.5)),
+                        child: Icon(
+                          coverIcon,
+                          size: 64,
+                          color: AppTheme.navyColor.withOpacity(0.5),
+                        ),
                       ),
                     ),
                     Positioned(
-                      top: 4, right: 4,
-                      child: IconButton(
-                        icon: Icon(
-                          story['isFavorite'] ? Icons.favorite : Icons.favorite_border,
-                          color: story['isFavorite'] ? AppTheme.pastelPink : Colors.white,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            story['isFavorite'] = !story['isFavorite'];
-                          });
-                        },
-                      ),
+                      top: 4,
+                      right: 4,
+                      child: isTogglingFavorite
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            )
+                          : IconButton(
+                              icon: Icon(
+                                story.isFavorite
+                                    ? Icons.favorite
+                                    : Icons.favorite_border,
+                                color: story.isFavorite
+                                    ? AppTheme.pastelPink
+                                    : Colors.white,
+                              ),
+                              onPressed: () => _toggleFavorite(provider, story),
+                            ),
                     ),
                   ],
                 ),
@@ -288,14 +414,24 @@ class _LibraryScreenState extends State<LibraryScreen> {
               Expanded(
                 flex: 1,
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 20.0, right: 12.0, top: 8.0, bottom: 12.0),
+                  padding: const EdgeInsets.only(
+                    left: 20.0,
+                    right: 12.0,
+                    top: 8.0,
+                    bottom: 12.0,
+                  ),
                   child: Column(
                     children: [
                       Expanded(
                         child: Center(
                           child: Text(
-                            story['title'],
-                            style: const TextStyle(color: AppTheme.navyColor, fontWeight: FontWeight.bold, fontSize: 16, height: 1.2),
+                            story.title,
+                            style: const TextStyle(
+                              color: AppTheme.navyColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              height: 1.2,
+                            ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.center,
@@ -303,12 +439,33 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      // ✨ 삭제 모드 상태에 따라 하단 버튼 동적 변경
+                      // 삭제 모드 상태에 따라 하단 버튼 동적 변경
                       SizedBox(
                         width: double.infinity,
-                        child: _isDeleteMode
-                            ? _buildSmallButton('삭제', Colors.redAccent, () => _showDeleteConfirmDialog(story))
-                            : _buildSmallButton('열기', AppTheme.pastelGreen, () => print('${story['title']} 열기')),
+                        child: isDeleting
+                            ? const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 10),
+                                child: Center(
+                                  child: SizedBox(
+                                    height: 16,
+                                    width: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : _isDeleteMode
+                            ? _buildSmallButton(
+                                '삭제',
+                                Colors.redAccent,
+                                () => _showDeleteConfirmDialog(story),
+                              )
+                            : _buildSmallButton(
+                                '열기',
+                                AppTheme.pastelGreen,
+                                () => _openStory(story),
+                              ),
                       ),
                     ],
                   ),
@@ -331,13 +488,21 @@ class _LibraryScreenState extends State<LibraryScreen> {
           color: bgColor,
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
-            BoxShadow(color: bgColor.withOpacity(0.4), blurRadius: 4, offset: const Offset(0, 2)),
+            BoxShadow(
+              color: bgColor.withOpacity(0.4),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
           ],
         ),
         child: Text(
           text,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );

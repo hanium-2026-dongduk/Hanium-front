@@ -21,6 +21,8 @@ import 'services/profile_service.dart';
 import 'services/quiz_service.dart';
 import 'services/reward_service.dart';
 import 'services/sticker_service.dart';
+import 'services/character_service.dart';
+import 'services/story_service.dart';
 import 'services/tts_service.dart';
 import 'services/vocabulary_service.dart';
 import 'theme/theme.dart';
@@ -110,16 +112,23 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider<AuthProvider>.value(value: _authProvider),
         Provider<ProfileService>.value(value: _profileService),
         Provider<RewardService>.value(value: _rewardService),
-        Provider<VocabularyService>(create: (_) => VocabularyService(_apiClient)),
+        Provider<VocabularyService>(
+          create: (_) => VocabularyService(_apiClient),
+        ),
         Provider<MissionService>(create: (_) => MissionService(_apiClient)),
-        Provider<AttendanceService>(create: (_) => AttendanceService(_apiClient)),
+        Provider<AttendanceService>(
+          create: (_) => AttendanceService(_apiClient),
+        ),
         // 출석 현황 화면(RW02) 전용. 화면을 열 때마다 새로 불러온다.
         ChangeNotifierProvider<AttendanceProvider>(
-          create: (context) =>
-              AttendanceProvider(attendanceService: context.read<AttendanceService>()),
+          create: (context) => AttendanceProvider(
+            attendanceService: context.read<AttendanceService>(),
+          ),
         ),
         Provider<TtsService>.value(value: _ttsService),
-        ChangeNotifierProvider<ActiveChildProvider>.value(value: _activeChildProvider),
+        ChangeNotifierProvider<ActiveChildProvider>.value(
+          value: _activeChildProvider,
+        ),
         ChangeNotifierProvider<RewardProvider>.value(value: _rewardProvider),
         Provider<BadgeService>(create: (_) => BadgeService(_apiClient)),
         // 보상 현황 화면(MP02) 전용. 화면을 열 때마다 새로 불러온다.
@@ -133,6 +142,10 @@ class _MyAppState extends State<MyApp> {
         Provider<StickerService>(create: (_) => StickerService(_apiClient)),
         // 퀴즈(QZ01~03). QuizProvider는 앱 전역이 아니라 퀴즈 화면이 열릴 때마다 만든다.
         Provider<QuizService>(create: (_) => QuizService(_apiClient)),
+        // 동화 생성·라이브러리(#39). CharacterProvider·StoryResultProvider·
+        // LibraryProvider도 화면 단위라 앱 전역에는 Service만 등록한다.
+        Provider<CharacterService>(create: (_) => CharacterService(_apiClient)),
+        Provider<StoryService>(create: (_) => StoryService(_apiClient)),
         // 학습 통계(MP03)·받은 스티커(MP05) 화면 전용. 화면을 열 때마다 새로 불러온다.
         ChangeNotifierProvider<LearningStatsProvider>(
           create: (context) => LearningStatsProvider(
@@ -141,8 +154,9 @@ class _MyAppState extends State<MyApp> {
           ),
         ),
         ChangeNotifierProvider<ReceivedStickerProvider>(
-          create: (context) =>
-              ReceivedStickerProvider(stickerService: context.read<StickerService>()),
+          create: (context) => ReceivedStickerProvider(
+            stickerService: context.read<StickerService>(),
+          ),
         ),
       ],
       child: MaterialApp(

@@ -1,28 +1,152 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:hanium_front/theme/theme.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:provider/provider.dart';
+
+import 'package:hanium_front/core/api_config.dart';
 import 'package:hanium_front/models/story_payload.dart';
+import 'package:hanium_front/providers/active_child_provider.dart';
+import 'package:hanium_front/providers/story_result_provider.dart';
 import 'package:hanium_front/screens/quiz/quiz_screen.dart';
+import 'package:hanium_front/services/story_service.dart';
+import 'package:hanium_front/theme/theme.dart';
+import 'package:hanium_front/widgets/async_state_view.dart';
 
-class StoryResultScreen extends StatefulWidget {
-  final StoryCreatePayload payload;
+/// 동화 생성 결과([payload])이거나 라이브러리에서 다시 여는 상세([storyId])다.
+/// 실제 생성/조회는 [StoryResultProvider]가 한다.
+class StoryResultScreen extends StatelessWidget {
+  final StoryCreatePayload? payload;
 
-  /// 서버에 저장된 동화의 id. 퀴즈(QZ02)는 이 값이 있어야 만들 수 있다.
-  /// 동화 생성이 아직 백엔드와 연결되지 않아 지금은 넘겨주는 곳이 없다.
+  /// 서버에 저장된 동화의 id. 라이브러리에서 열 때는 이 값만 온다.
   final int? storyId;
 
-  const StoryResultScreen({super.key, required this.payload, this.storyId});
+  /// 라이브러리 목록이 이미 알고 있는 즐겨찾기 여부. 상세 조회 응답에는
+  /// 이 값이 없어서 화면 진입 시점에 넘겨받는다.
+  final bool initialIsFavorite;
+
+  const StoryResultScreen({
+    super.key,
+    this.payload,
+    this.storyId,
+    this.initialIsFavorite = false,
+  }) : assert(
+         payload != null || storyId != null,
+         'payload(생성) 또는 storyId(조회) 중 하나는 있어야 한다',
+       );
 
   @override
-  State<StoryResultScreen> createState() => _StoryResultScreenState();
+  Widget build(BuildContext context) {
+    final activeChild = context.read<ActiveChildProvider>();
+    final childProfileId = activeChild.childProfileId;
+    if (childProfileId == null) {
+      return Scaffold(
+        appBar: AppBar(iconTheme: const IconThemeData(color: Colors.white)),
+        body: SafeArea(
+          child: CenteredMessage(
+            message: '먼저 자녀 프로필을 선택해 주세요.',
+            actionLabel: '돌아가기',
+            onAction: () => Navigator.of(context).maybePop(),
+          ),
+        ),
+      );
+    }
+
+    return ChangeNotifierProvider<StoryResultProvider>(
+      create: (context) => StoryResultProvider(
+        storyService: context.read<StoryService>(),
+        childProfileId: childProfileId,
+        payload: payload,
+        initialStoryId: storyId,
+        // 서버 프롬프트의 난이도·어휘 수준에 반영되므로 생성 모드에서 자녀 나이를 넘긴다.
+        childAge: activeChild.activeChild?.age,
+        initialIsFavorite: initialIsFavorite,
+      ),
+      child: const _StoryResultView(),
+    );
+  }
 }
 
-class _StoryResultScreenState extends State<StoryResultScreen> {
+class _StoryResultView extends StatefulWidget {
+  const _StoryResultView();
+
+  @override
+  State<_StoryResultView> createState() => _StoryResultViewState();
+}
+
+class _StoryResultViewState extends State<_StoryResultView> {
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  int _currentPage = 0;
   bool _isPlaying = false;
   bool _isQuizOpen = false;
 
   /// 퀴즈를 끝까지 풀어 채점까지 마쳤는지. 마쳤다면 다시 열지 못하게 한다.
-  /// (같은 동화로 다시 열면 문항이 교체되고 포인트가 또 지급된다.)
   bool _isQuizDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<StoryResultProvider>().load();
+    });
+    _audioPlayer.playerStateStream.listen((state) {
+      if (!mounted) return;
+      if (state.processingState == ProcessingState.completed) {
+        setState(() => _isPlaying = false);
+        unawaited(_audioPlayer.seek(Duration.zero));
+      }
+      // 플랫폼 채널이 없는 테스트 환경 등에서 스트림 오류로 화면이 죽지 않게 한다.
+    }, onError: (_) {});
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
+  }
+
+  Future<void> _togglePlay(String? audioUrl) async {
+    if (audioUrl == null) return;
+    if (_isPlaying) {
+      await _audioPlayer.pause();
+      if (mounted) setState(() => _isPlaying = false);
+      return;
+    }
+    try {
+      await _audioPlayer.setUrl(ApiConfig.resolveMediaUrl(audioUrl));
+      await _audioPlayer.play();
+      if (mounted) setState(() => _isPlaying = true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('오디오를 재생할 수 없어요.')));
+    }
+  }
+
+  /// 오디오를 멈추고 페이지를 옮긴다. [delta]는 -1(이전)·+1(다음).
+  Future<void> _changePage(int delta, int totalPages) async {
+    final next = _currentPage + delta;
+    if (next < 0 || next >= totalPages) return;
+    await _audioPlayer.stop();
+    if (!mounted) return;
+    setState(() {
+      _currentPage = next;
+      _isPlaying = false;
+    });
+  }
+
+  Future<void> _toggleFavorite() async {
+    final provider = context.read<StoryResultProvider>();
+    await provider.toggleFavorite();
+    if (!mounted) return;
+    final error = provider.favoriteError;
+    if (error != null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error)));
+    }
+  }
 
   Future<void> _openQuiz(int storyId) async {
     if (_isQuizOpen || _isQuizDone) return;
@@ -37,149 +161,263 @@ class _StoryResultScreenState extends State<StoryResultScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<StoryResultProvider>();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('생성 완료!'),
+        title: Text(
+          provider.isLoading ? '만드는 중...' : (provider.story?.title ?? '생성 완료!'),
+        ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.popUntil(context, (route) => route.isFirst);
-            },
-            child: const Text('처음으로', style: TextStyle(color: AppTheme.yellowColor)),
+            onPressed: () =>
+                Navigator.popUntil(context, (route) => route.isFirst),
+            child: const Text(
+              '처음으로',
+              style: TextStyle(color: AppTheme.yellowColor),
+            ),
           ),
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 800),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 1,
-                  child: Container(
-                    height: 400,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(20),
-                      child: Image.network(
-                        'https://picsum.photos/400/400',
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) {
-                            return child;
-                          }
-                          return Center(
-                            child: CircularProgressIndicator(
-                              color: AppTheme.yellowColor,
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded / (loadingProgress.expectedTotalBytes ?? 1)
-                                  : null,
+      body: SafeArea(
+        child: provider.isLoading
+            ? _StoryLoading(isCreating: provider.payload != null)
+            : AsyncStateView(
+                isLoading: false,
+                errorMessage: provider.loadError,
+                onRetry: provider.load,
+                isEmpty: provider.story?.pages.isEmpty ?? false,
+                emptyMessage: '표시할 동화 내용이 없어요.',
+                contentBuilder: (context) => _buildContent(context, provider),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, StoryResultProvider provider) {
+    final pages = provider.story!.pages;
+    final pageIndex = _currentPage.clamp(0, pages.length - 1);
+    final page = pages[pageIndex];
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 800),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 1,
+                child: Container(
+                  height: 400,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: page.imageUrl != null
+                        ? Image.network(
+                            ApiConfig.resolveMediaUrl(page.imageUrl!),
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  color: AppTheme.yellowColor,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Center(
+                                  child: Icon(
+                                    Icons.image_not_supported,
+                                    color: Colors.white38,
+                                    size: 48,
+                                  ),
+                                ),
+                          )
+                        : const Center(
+                            child: Icon(
+                              Icons.auto_stories,
+                              color: Colors.white38,
+                              size: 48,
                             ),
-                          );
-                        },
-                      ),
-                    ),
+                          ),
                   ),
                 ),
-                const SizedBox(width: 32),
-                Expanded(
-                  flex: 1,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: _isPlaying ? Colors.white.withOpacity(0.1) : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          '"The little pilot flew high in the sky. He met a tiny angel lost in the soft clouds."',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+              ),
+              const SizedBox(width: 32),
+              Expanded(
+                flex: 1,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          onPressed: pageIndex > 0
+                              ? () => _changePage(-1, pages.length)
+                              : null,
+                          icon: const Icon(
+                            Icons.arrow_back_ios,
                             color: Colors.white,
-                            fontFamily: 'Quicksand',
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        '"꼬마 조종사는 하늘 높이 날아갔어요. 그는 폭신한 구름 속에서 길을 잃은 작은 천사를 만났답니다."',
-                        style: TextStyle(fontSize: 18, color: Colors.white70),
-                      ),
-                      const SizedBox(height: 32),
-                      Wrap(
-                        spacing: 16,
-                        runSpacing: 12,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                _isPlaying = !_isPlaying;
-                              });
-                            },
-                            icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
-                            label: Text(_isPlaying ? '일시정지' : '영어로 듣기 (TTS)'),
+                        Text(
+                          '페이지 ${pageIndex + 1} / ${pages.length}',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontWeight: FontWeight.bold,
                           ),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              // 단어장 저장 로직
-                            },
-                            icon: const Icon(Icons.bookmark_add, color: Colors.white),
-                            label: const Text('내 책장에 저장', style: TextStyle(color: Colors.white)),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Colors.white54),
-                            ),
+                        ),
+                        IconButton(
+                          onPressed: pageIndex < pages.length - 1
+                              ? () => _changePage(1, pages.length)
+                              : null,
+                          icon: const Icon(
+                            Icons.arrow_forward_ios,
+                            color: Colors.white,
                           ),
-                        ],
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _isPlaying
+                            ? Colors.white.withOpacity(0.1)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      child: Text(
+                        page.content,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontFamily: 'Quicksand',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 12,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: page.audioUrl != null
+                              ? () => _togglePlay(page.audioUrl)
+                              : null,
+                          icon: Icon(
+                            _isPlaying ? Icons.pause : Icons.play_arrow,
+                          ),
+                          label: Text(_isPlaying ? '일시정지' : '영어로 듣기 (TTS)'),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: provider.isTogglingFavorite
+                              ? null
+                              : _toggleFavorite,
+                          icon: Icon(
+                            provider.isFavorite
+                                ? Icons.bookmark
+                                : Icons.bookmark_add,
+                            color: provider.isFavorite
+                                ? AppTheme.yellowColor
+                                : Colors.white,
+                          ),
+                          label: Text(
+                            provider.isFavorite ? '즐겨찾기 됨' : '즐겨찾기에 담기',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.white54),
+                          ),
+                        ),
+                      ],
+                    ),
 
+                    if (provider.choices.isNotEmpty) ...[
                       const SizedBox(height: 40),
-
                       const Text(
                         '다음에 어떤 일이 일어날까요?',
-                        style: TextStyle(color: AppTheme.yellowColor, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: AppTheme.yellowColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        '🚧 선택해서 이어가는 기능은 곧 추가돼요. 지금은 살짝 보여드릴게요!',
+                        style: TextStyle(color: Colors.white38, fontSize: 12),
                       ),
                       const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.white.withOpacity(0.2)),
-                          child: const Text('천사와 함께 별을 따러 간다', style: TextStyle(color: Colors.white)),
+                      for (final choice in provider.choices) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: null,
+                            style: ElevatedButton.styleFrom(
+                              disabledBackgroundColor: Colors.white.withOpacity(
+                                0.2,
+                              ),
+                              disabledForegroundColor: Colors.white54,
+                            ),
+                            child: Text(choice),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {},
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.white.withOpacity(0.2)),
-                          child: const Text('무지개 미끄럼틀을 타고 내려온다', style: TextStyle(color: Colors.white)),
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-                      _QuizEntryCard(
-                        storyId: widget.storyId,
-                        isDone: _isQuizDone,
-                        onStart: _openQuiz,
-                      ),
+                        const SizedBox(height: 8),
+                      ],
                     ],
-                  ),
+
+                    const SizedBox(height: 32),
+                    _QuizEntryCard(
+                      storyId: provider.storyId,
+                      isDone: _isQuizDone,
+                      onStart: _openQuiz,
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// 동화 생성·조회가 오래 걸릴 수 있어(생성은 최대 2분 가까이) 멈춘 게 아니라는
+/// 안내를 함께 보여준다. `quiz_screen.dart`의 `_QuizLoading`과 같은 자리다.
+class _StoryLoading extends StatelessWidget {
+  final bool isCreating;
+
+  const _StoryLoading({required this.isCreating});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator(color: AppTheme.yellowColor),
+          const SizedBox(height: 20),
+          Text(
+            isCreating ? '마법사가 동화를 만들고 있어요...' : '동화를 불러오고 있어요...',
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+          if (isCreating) ...[
+            const SizedBox(height: 8),
+            const Text(
+              '그림과 목소리까지 준비하느라 1~2분 정도 걸릴 수 있어요.',
+              style: TextStyle(color: Colors.white38, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -193,7 +431,11 @@ class _QuizEntryCard extends StatelessWidget {
   final bool isDone;
   final Future<void> Function(int storyId) onStart;
 
-  const _QuizEntryCard({required this.storyId, required this.isDone, required this.onStart});
+  const _QuizEntryCard({
+    required this.storyId,
+    required this.isDone,
+    required this.onStart,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -213,7 +455,11 @@ class _QuizEntryCard extends StatelessWidget {
         children: [
           const Text(
             '동화가 재미있었나요? 퀴즈로 확인해 볼까요?',
-            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 12),
           SizedBox(

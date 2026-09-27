@@ -37,9 +37,24 @@ class ApiResponse {
   }
 
   /// `data` 안의 리스트용. (예: `data.profiles`)
-  static List<Map<String, dynamic>> list(Response<dynamic> response, String key) {
+  static List<Map<String, dynamic>> list(
+    Response<dynamic> response,
+    String key,
+  ) {
     final inner = data(response)[key];
     if (inner is! List) return const [];
     return inner.whereType<Map>().map(Map<String, dynamic>.from).toList();
+  }
+
+  /// `data` 자체가 배열인 응답용. (예: `GET /api/characters` → `data: [...]`)
+  /// [data]는 `data`가 Map이 아니면 예외를 던지므로 이런 응답에는 못 쓴다.
+  static List<Map<String, dynamic>> dataList(Response<dynamic> response) {
+    final body = response.data;
+    if (body is! Map) {
+      throw const ApiException(message: '서버 응답 형식이 올바르지 않아요.');
+    }
+    final data = body['data'];
+    if (data is! List) return const [];
+    return data.whereType<Map>().map(Map<String, dynamic>.from).toList();
   }
 }
