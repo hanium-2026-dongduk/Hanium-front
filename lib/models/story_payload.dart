@@ -7,8 +7,10 @@ class StoryCreatePayload {
   // 1단계: 캐릭터
   String? characterMethod;
 
-  /// '기존 캐릭터 선택'일 때 목록에서 고른 캐릭터.
-  int? existingCharacterId;
+  /// 동화 생성에 실제로 쓸 캐릭터 id. 방식(기존 선택/직접 그리기/랜덤)과
+  /// 무관하게 `StoryCreationScreen`이 1단계를 마칠 때 채워 넣는다 — 새로 만드는
+  /// 경우도 그 자리에서 캐릭터를 먼저 만들어 id를 받아온다.
+  int? characterId;
   String? characterName;
   String? characterPersonality;
   String? characterDescription;
@@ -28,7 +30,7 @@ class StoryCreatePayload {
 
   StoryCreatePayload({
     this.characterMethod,
-    this.existingCharacterId,
+    this.characterId,
     this.characterName,
     this.characterPersonality,
     this.characterDescription,
