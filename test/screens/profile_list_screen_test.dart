@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hanium_front/core/api_exception.dart';
 import 'package:hanium_front/models/child_profile.dart';
+import 'package:hanium_front/models/dashboard_summary.dart';
 import 'package:hanium_front/models/page_result.dart';
 import 'package:hanium_front/models/reward_detail.dart';
 import 'package:hanium_front/models/reward_history_entry.dart';
@@ -13,24 +14,21 @@ import 'package:hanium_front/screens/auth/profile_list_screen.dart';
 import 'package:hanium_front/screens/main_screen.dart';
 import 'package:hanium_front/screens/settings/account_security_screen.dart';
 import 'package:hanium_front/services/profile_service.dart';
+import 'package:hanium_front/services/dashboard_service.dart';
 import 'package:hanium_front/services/reward_service.dart';
 import 'package:provider/provider.dart';
 
 import '../support/fake_auth_provider.dart';
 
 /// 프로필을 고르면 메인 화면으로 넘어가므로, 그 화면이 요구하는 Provider들도
-/// 최소한으로 채워둔다. (ActiveChildProvider, RewardProvider)
+/// 최소한으로 채워둔다. (ActiveChildProvider, RewardProvider, DashboardService)
 class _FakeRewardService implements RewardService {
   @override
   Future<int> fetchPointBalance(int childProfileId) async => 0;
 
   @override
-  Future<RewardDetail> fetchDetail(int childProfileId) async => const RewardDetail(
-    childProfileId: 1,
-    points: 0,
-    level: 1,
-    streakDays: 0,
-  );
+  Future<RewardDetail> fetchDetail(int childProfileId) async =>
+      const RewardDetail(childProfileId: 1, points: 0, level: 1, streakDays: 0);
 
   @override
   Future<PageResult<RewardHistoryEntry>> fetchHistory(
@@ -39,6 +37,17 @@ class _FakeRewardService implements RewardService {
     int limit = 20,
     String? reason,
   }) => throw UnimplementedError();
+}
+
+class _FakeDashboardService implements DashboardService {
+  @override
+  Future<DashboardSummary> fetchSummary(int childProfileId) async =>
+      const DashboardSummary(
+        storyCount: 0,
+        favoriteStoryCount: 0,
+        vocabularyCount: 0,
+        quizStats: QuizStats(totalAttempts: 0),
+      );
 }
 
 /// 자녀 프로필 화면(P-AU-AU04)이 목록·활성 전환·삭제를 제대로 다루는지 본다.
@@ -130,6 +139,7 @@ void main() {
           ChangeNotifierProvider<RewardProvider>(
             create: (_) => RewardProvider(rewardService: _FakeRewardService()),
           ),
+          Provider<DashboardService>(create: (_) => _FakeDashboardService()),
         ],
         child: const MaterialApp(home: ProfileListScreen()),
       ),
