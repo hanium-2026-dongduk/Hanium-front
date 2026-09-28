@@ -13,6 +13,8 @@ class FakeStoryService implements StoryService {
   int removeFavoriteCalls = 0;
 
   Map<String, dynamic>? lastCreateArgs;
+  String? lastRequestId;
+  final List<String> requestIds = [];
   String? lastSort;
   bool? lastFavoriteOnly;
   int? lastDeletedStoryId;
@@ -51,9 +53,12 @@ class FakeStoryService implements StoryService {
     required int characterId,
     required String background,
     required String mainEvent,
+    required String requestId,
     int? childAge,
   }) async {
     createCalls++;
+    lastRequestId = requestId;
+    requestIds.add(requestId);
     lastCreateArgs = {
       'childProfileId': childProfileId,
       'characterId': characterId,
