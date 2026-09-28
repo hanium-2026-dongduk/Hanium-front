@@ -47,6 +47,7 @@ void main() {
 
     storyService = StoryService(
       ApiClient(tokenStorage: TokenStorage(storage: storage)),
+      pollInterval: Duration.zero,
     );
     server.listen((request) async => handler(request));
   });
@@ -67,17 +68,41 @@ void main() {
     await request.response.close();
   }
 
-  test('createStory는 camelCase 본문으로 POST하고 페이지를 순서대로 읽는다', () async {
+  test('createStory는 요청 키로 작업을 접수하고 완료 후 상세를 조회한다', () async {
     String? method;
     String? path;
+    String? requestId;
     Map<String, dynamic>? body;
+    var polls = 0;
     handler = (request) async {
-      method = request.method;
-      path = request.uri.path;
-      body =
-          jsonDecode(await utf8.decoder.bind(request).join())
-              as Map<String, dynamic>;
-      await respond(request, 201, {
+      if (request.uri.path == '/api/stories' && request.method == 'POST') {
+        method = request.method;
+        path = request.uri.path;
+        requestId = request.headers.value('Idempotency-Key');
+        body =
+            jsonDecode(await utf8.decoder.bind(request).join())
+                as Map<String, dynamic>;
+        await respond(request, 202, {
+          'success': true,
+          'data': {'jobId': 7, 'status': 'pending', 'storyId': null},
+        });
+        return;
+      }
+      if (request.uri.path == '/api/stories/generations/7') {
+        polls++;
+        await respond(request, 200, {
+          'success': true,
+          'data': {
+            'jobId': 7,
+            'status': polls == 1 ? 'processing' : 'completed',
+            'storyId': polls == 1 ? null : 42,
+          },
+        });
+        return;
+      }
+      expect(request.uri.path, '/api/stories/42');
+      expect(request.uri.queryParameters['child_profile_id'], '3');
+      await respond(request, 200, {
         'success': true,
         'data': {
           'character': '토끼',
@@ -109,10 +134,13 @@ void main() {
       background: '신비로운 숲',
       mainEvent: '숨겨진 보물 찾기',
       childAge: 6,
+      requestId: 'request-1',
     );
 
     expect(method, 'POST');
     expect(path, '/api/stories');
+    expect(requestId, 'request-1');
+    expect(polls, 2);
     expect(body, {
       'childProfileId': 3,
       'characterId': 9,
@@ -141,11 +169,84 @@ void main() {
         characterId: 9,
         background: '신비로운 숲',
         mainEvent: '숨겨진 보물 찾기',
+        requestId: 'request-2',
       ),
       throwsA(
         isA<ApiException>()
             .having((e) => e.statusCode, 'statusCode', 500)
             .having((e) => e.message, 'message', '이미지 생성 실패'),
+      ),
+    );
+  });
+
+  test('상태 조회가 실패한 뒤 같은 키로 재시도하면 기존 작업을 이어받는다', () async {
+    final requestIds = <String?>[];
+    var statusCalls = 0;
+    handler = (request) async {
+      if (request.method == 'POST') {
+        requestIds.add(request.headers.value('Idempotency-Key'));
+        await respond(request, 202, {
+          'success': true,
+          'data': {
+            'jobId': 7,
+            'status': requestIds.length == 1 ? 'pending' : 'completed',
+            'storyId': requestIds.length == 1 ? null : 42,
+          },
+        });
+      } else if (request.uri.path.endsWith('/generations/7')) {
+        statusCalls++;
+        await respond(request, 503, {'success': false, 'message': '일시적인 오류'});
+      } else {
+        await respond(request, 200, {
+          'success': true,
+          'data': {'storyId': 42, 'title': '완료', 'pages': []},
+        });
+      }
+    };
+
+    Future<void> run() async {
+      await storyService.createStory(
+        childProfileId: 3,
+        characterId: 9,
+        background: '숲',
+        mainEvent: '탐험',
+        requestId: 'same-request',
+      );
+    }
+
+    await expectLater(run(), throwsA(isA<ApiException>()));
+    await run();
+    expect(requestIds, ['same-request', 'same-request']);
+    expect(statusCalls, 1);
+  });
+
+  test('서버가 작업 실패를 확정하면 재시도용 예외를 반환한다', () async {
+    handler = (request) async {
+      await respond(request, 202, {
+        'success': true,
+        'data': {
+          'jobId': 7,
+          'status': 'failed',
+          'storyId': null,
+          'errorMessage': 'AI 생성 실패',
+        },
+      });
+    };
+
+    await expectLater(
+      storyService.createStory(
+        childProfileId: 3,
+        characterId: 9,
+        background: '숲',
+        mainEvent: '탐험',
+        requestId: 'failed-request',
+      ),
+      throwsA(
+        isA<StoryGenerationFailedException>().having(
+          (error) => error.message,
+          'message',
+          'AI 생성 실패',
+        ),
       ),
     );
   });
@@ -220,6 +321,9 @@ void main() {
           'storyId': 42,
           'title': 'T',
           'pages': <Map<String, dynamic>>[],
+          'character': '토끼',
+          'setting': {'background': '숲', 'mainEvent': '탐험'},
+          'choices': ['계속 걷기'],
         },
       });
     };
@@ -233,8 +337,8 @@ void main() {
     expect(childQuery, '3');
     expect(result.storyId, 42);
     expect(result.pages, isEmpty);
-    // 상세 조회는 choices를 내려주지 않는다.
-    expect(result.choices, isEmpty);
+    expect(result.characterName, '토끼');
+    expect(result.choices, ['계속 걷기']);
   });
 
   test('deleteStory는 DELETE로 요청한다', () async {
