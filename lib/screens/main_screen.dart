@@ -6,10 +6,12 @@ import 'package:hanium_front/screens/attendance_screen.dart';
 import 'package:hanium_front/screens/voca_screen.dart';
 import 'package:hanium_front/screens/reward_history_screen.dart';
 import 'package:hanium_front/providers/active_child_provider.dart';
+import 'package:hanium_front/providers/main_dashboard_provider.dart';
 import 'package:hanium_front/providers/reward_provider.dart';
 import 'package:hanium_front/screens/library_screen.dart';
 import 'package:hanium_front/screens/mypage/my_page_screen.dart';
 import 'package:hanium_front/screens/story_creation_screen.dart';
+import 'package:hanium_front/services/dashboard_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -19,21 +21,58 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
+  late final MainDashboardProvider _dashboard;
+  int? _observedChildId;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshPoints());
+    _dashboard = MainDashboardProvider(
+      service: context.read<DashboardService>(),
+    );
   }
 
-  Future<void> _refreshPoints() async {
-    final childProfileId = context.read<ActiveChildProvider>().childProfileId;
-    if (childProfileId == null) return;
-    await context.read<RewardProvider>().refresh(childProfileId);
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final childId = context.watch<ActiveChildProvider>().childProfileId;
+    if (childId == _observedChildId) return;
+    _observedChildId = childId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _observedChildId != childId) return;
+      _refreshSummaryAndPoints(childId);
+    });
+  }
+
+  Future<void> _refreshSummaryAndPoints(int? childId) async {
+    final rewards = context.read<RewardProvider>();
+    await Future.wait([
+      _dashboard.load(childId),
+      if (childId != null) rewards.refresh(childId),
+    ]);
+  }
+
+  Future<void> _openAndRefresh(Widget screen) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => screen),
+    );
+    if (!mounted) return;
+    await _refreshSummaryAndPoints(
+      context.read<ActiveChildProvider>().childProfileId,
+    );
+  }
+
+  @override
+  void dispose() {
+    _dashboard.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final rewards = context.watch<RewardProvider>();
+    final childId = context.watch<ActiveChildProvider>().childProfileId;
     final points = rewards.points;
     final level = rewards.level;
 
@@ -133,14 +172,7 @@ class _MainScreenState extends State<MainScreen> {
                 children: [
                   Expanded(
                     child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const StoryCreationScreen(),
-                          ),
-                        );
-                      },
+                      onTap: () => _openAndRefresh(const StoryCreationScreen()),
                       borderRadius: BorderRadius.circular(24),
                       child: _buildSquareCard(
                         '동화\n생성하기',
@@ -155,14 +187,7 @@ class _MainScreenState extends State<MainScreen> {
                   Expanded(
                     // 클릭 이벤트 추가
                     child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const LibraryScreen(),
-                          ),
-                        );
-                      },
+                      onTap: () => _openAndRefresh(const LibraryScreen()),
                       borderRadius: BorderRadius.circular(24),
                       child: _buildSquareCard(
                         '학습하기',
@@ -181,6 +206,11 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 24),
+              AnimatedBuilder(
+                animation: _dashboard,
+                builder: (context, _) => _buildDashboardSummary(childId),
               ),
               const SizedBox(height: 40),
 
@@ -246,14 +276,7 @@ class _MainScreenState extends State<MainScreen> {
                       'Word Quiz',
                       Icons.quiz_outlined,
                       Colors.white,
-                      () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const VocaScreen(),
-                          ),
-                        );
-                      },
+                      () => _openAndRefresh(const VocaScreen()),
                     ),
                   ),
                 ],
@@ -261,6 +284,100 @@ class _MainScreenState extends State<MainScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardSummary(int? childId) {
+    if (childId == null) return const SizedBox.shrink();
+    final isCurrentChild = _dashboard.childProfileId == childId;
+    final summary = isCurrentChild ? _dashboard.summary : null;
+    if (summary == null) {
+      if (isCurrentChild && _dashboard.errorMessage != null) {
+        return Center(
+          child: TextButton.icon(
+            onPressed: () => _dashboard.load(childId),
+            icon: const Icon(Icons.refresh),
+            label: const Text('학습 현황을 불러오지 못했어요. 다시 시도'),
+          ),
+        );
+      }
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '나의 학습 현황',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildSummaryTile('내 동화', '${summary.storyCount}권'),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildSummaryTile('모은 단어', '${summary.vocabularyCount}개'),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildSummaryTile(
+                '퀴즈',
+                '${summary.quizStats.totalAttempts}회',
+                detail: summary.quizStats.totalAttempts > 0
+                    ? '평균 ${summary.quizStats.averageScore ?? 0}점'
+                    : null,
+              ),
+            ),
+          ],
+        ),
+        if (_dashboard.errorMessage != null)
+          TextButton.icon(
+            onPressed: () => _dashboard.load(childId),
+            icon: const Icon(Icons.refresh),
+            label: const Text('최신 현황을 불러오지 못했어요. 다시 시도'),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryTile(String label, String value, {String? detail}) {
+    return Container(
+      height: 100,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          if (detail != null)
+            Text(
+              detail,
+              style: const TextStyle(color: Colors.white70, fontSize: 10),
+            ),
+        ],
       ),
     );
   }
