@@ -47,4 +47,22 @@ class GuardianService {
     );
     return response.data['data']['guardianToken'];
   }
+
+  // 5. 보호자 설정 변경 (사용 시간, 푸시 알림)
+  Future<void> updateSettings({
+    required int limitMinutes,
+    required bool pushEnabled,
+    required String guardianToken,
+  }) async {
+    await _apiClient.dio.put(
+      '/api/guardian/settings',
+      data: {
+        'daily_usage_limit_minutes': limitMinutes,
+        'push_enabled': pushEnabled,
+      },
+      options: Options(
+        headers: {'X-Guardian-Token': guardianToken}, // 보호자 전용 요청 헤더 필수
+      ),
+    );
+  }
 }
