@@ -31,9 +31,9 @@ class StoryResultScreen extends StatelessWidget {
     this.storyId,
     this.initialIsFavorite = false,
   }) : assert(
-         payload != null || storyId != null,
-         'payload(생성) 또는 storyId(조회) 중 하나는 있어야 한다',
-       );
+  payload != null || storyId != null,
+  'payload(생성) 또는 storyId(조회) 중 하나는 있어야 한다',
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -183,13 +183,13 @@ class _StoryResultViewState extends State<_StoryResultView> {
         child: provider.isLoading
             ? _StoryLoading(isCreating: provider.payload != null)
             : AsyncStateView(
-                isLoading: false,
-                errorMessage: provider.loadError,
-                onRetry: provider.load,
-                isEmpty: provider.story?.pages.isEmpty ?? false,
-                emptyMessage: '표시할 동화 내용이 없어요.',
-                contentBuilder: (context) => _buildContent(context, provider),
-              ),
+          isLoading: false,
+          errorMessage: provider.loadError,
+          onRetry: provider.load,
+          isEmpty: provider.story?.pages.isEmpty ?? false,
+          emptyMessage: '표시할 동화 내용이 없어요.',
+          contentBuilder: (context) => _buildContent(context, provider),
+        ),
       ),
     );
   }
@@ -213,39 +213,39 @@ class _StoryResultViewState extends State<_StoryResultView> {
                   height: 400,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(20),
                     child: page.imageUrl != null
                         ? Image.network(
-                            ApiConfig.resolveMediaUrl(page.imageUrl!),
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return const Center(
-                                child: CircularProgressIndicator(
-                                  color: AppTheme.yellowColor,
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Center(
-                                  child: Icon(
-                                    Icons.image_not_supported,
-                                    color: Colors.white38,
-                                    size: 48,
-                                  ),
-                                ),
-                          )
-                        : const Center(
-                            child: Icon(
-                              Icons.auto_stories,
-                              color: Colors.white38,
-                              size: 48,
-                            ),
+                      ApiConfig.resolveMediaUrl(page.imageUrl!),
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: AppTheme.yellowColor,
                           ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) =>
+                      const Center(
+                        child: Icon(
+                          Icons.image_not_supported,
+                          color: Colors.white38,
+                          size: 48,
+                        ),
+                      ),
+                    )
+                        : const Center(
+                      child: Icon(
+                        Icons.auto_stories,
+                        color: Colors.white38,
+                        size: 48,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -268,7 +268,7 @@ class _StoryResultViewState extends State<_StoryResultView> {
                           ),
                         ),
                         Text(
-                          '페이지 ${pageIndex + 1} / ${pages.length}',
+                          '페이지 ${pageIndex + 1} /${pages.length}',
                           style: const TextStyle(
                             color: Colors.white70,
                             fontWeight: FontWeight.bold,
@@ -289,7 +289,7 @@ class _StoryResultViewState extends State<_StoryResultView> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: _isPlaying
-                            ? Colors.white.withOpacity(0.1)
+                            ? Colors.white.withValues(alpha: 0.1)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -361,9 +361,7 @@ class _StoryResultViewState extends State<_StoryResultView> {
                           child: ElevatedButton(
                             onPressed: null,
                             style: ElevatedButton.styleFrom(
-                              disabledBackgroundColor: Colors.white.withOpacity(
-                                0.2,
-                              ),
+                              disabledBackgroundColor: Colors.white.withValues(alpha: 0.2),
                               disabledForegroundColor: Colors.white54,
                             ),
                             child: Text(choice),

@@ -182,10 +182,7 @@ class _MainScreenState extends State<MainScreen> {
                     ),
                   ),
                   const SizedBox(width: 16),
-
-                  // 노란색 학습하기 버튼
                   Expanded(
-                    // 클릭 이벤트 추가
                     child: InkWell(
                       onTap: () => _openAndRefresh(const LibraryScreen()),
                       borderRadius: BorderRadius.circular(24),
@@ -196,13 +193,23 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                     ),
                   ),
-
                   const SizedBox(width: 16),
                   Expanded(
-                    child: _buildSquareCard(
-                      '등장인물\n관리하기',
-                      Icons.groups,
-                      AppTheme.pastelPink,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const VocaScreen(),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(24),
+                      child: _buildSquareCard(
+                        '단어 퀴즈',
+                        Icons.quiz_outlined,
+                        AppTheme.pastelPink, // 원래 등장인물 관리하기의 분홍색
+                      ),
                     ),
                   ),
                 ],
@@ -214,6 +221,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
               const SizedBox(height: 40),
 
+              // Today's Mission 버튼
               InkWell(
                 onTap: () {
                   Navigator.push(
@@ -240,7 +248,7 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                       SizedBox(width: 10),
                       Text(
-                        "Today's Mission",
+                        "오늘의 미션",
                         style: TextStyle(
                           color: AppTheme.navyColor,
                           fontWeight: FontWeight.bold,
@@ -251,24 +259,24 @@ class _MainScreenState extends State<MainScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildActionCard(
-                      'Attendance',
-                      Icons.calendar_month,
-                      Colors.white,
-                      () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const AttendanceScreen(),
-                          ),
-                        );
-                      },
+              // 출석체크 버튼 (Today's Mission과 동일한 스타일)
+              InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AttendanceScreen(),
                     ),
+                  );
+                },
+                borderRadius: BorderRadius.circular(30),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  decoration: BoxDecoration(
+                    color: AppTheme.pastelGreen,
+                    borderRadius: BorderRadius.circular(30),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -279,8 +287,9 @@ class _MainScreenState extends State<MainScreen> {
                       () => _openAndRefresh(const VocaScreen()),
                     ),
                   ),
-                ],
+                ),
               ),
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -414,40 +423,6 @@ class _MainScreenState extends State<MainScreen> {
           const SizedBox(height: 16),
           Icon(icon, color: AppTheme.navyColor, size: 36),
         ],
-      ),
-    );
-  }
-
-  Widget _buildActionCard(
-    String title,
-    IconData icon,
-    Color bgColor,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: AppTheme.navyColor, size: 32),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                color: AppTheme.navyColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
