@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:hanium_front/screens/main_screen.dart';
-import 'package:hanium_front/screens/reward_history_screen.dart';
 import 'package:provider/provider.dart';
 
 import 'core/api_client.dart';
@@ -13,6 +11,7 @@ import 'providers/learning_stats_provider.dart';
 import 'providers/received_sticker_provider.dart';
 import 'providers/reward_provider.dart';
 import 'providers/reward_status_provider.dart';
+import 'providers/guardian_provider.dart';
 import 'screens/auth_gate.dart';
 import 'services/attendance_service.dart';
 import 'services/auth_service.dart';
@@ -30,6 +29,7 @@ import 'services/vocabulary_service.dart';
 import 'theme/theme.dart';
 import 'screens/tutorial_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'services/guardian_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -143,6 +143,8 @@ class _MyAppState extends State<MyApp> {
         Provider<DashboardService>(create: (_) => DashboardService(_apiClient)),
         Provider<StickerService>(create: (_) => StickerService(_apiClient)),
         // 퀴즈(QZ01~03). QuizProvider는 앱 전역이 아니라 퀴즈 화면이 열릴 때마다 만든다.
+        Provider<GuardianService>(create: (_) => GuardianService(_apiClient)),
+        ChangeNotifierProvider<GuardianProvider>(create: (_) => GuardianProvider()),
         Provider<QuizService>(create: (_) => QuizService(_apiClient)),
         // 동화 생성·라이브러리(#39). CharacterProvider·StoryResultProvider·
         // LibraryProvider도 화면 단위라 앱 전역에는 Service만 등록한다.
