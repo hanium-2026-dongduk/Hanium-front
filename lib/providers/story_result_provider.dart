@@ -40,6 +40,7 @@ class StoryResultProvider extends ChangeNotifier {
 
   // 화면이 열리자마자 생성/조회를 시작하므로 첫 프레임부터 로딩으로 시작한다.
   bool _isLoading = true;
+  bool _loadInProgress = false;
   String? _loadError;
   bool _isFavorite;
   bool _isTogglingFavorite = false;
@@ -54,11 +55,12 @@ class StoryResultProvider extends ChangeNotifier {
   bool get isTogglingFavorite => _isTogglingFavorite;
   String? get favoriteError => _favoriteError;
 
-  /// 새로 만든 직후에만 오는 다음 이야기 선택지. 서버가 저장하지 않아서
-  /// 상세 조회로 다시 열면 항상 비어 있다(분기 API가 없어 읽기 전용으로만 쓴다).
+  /// 저장된 다음 이야기 선택지. 분기 API는 없어 읽기 전용으로 보여준다.
   List<String> get choices => _story?.choices ?? const [];
 
   Future<void> load() async {
+    if (_loadInProgress) return;
+    _loadInProgress = true;
     _isLoading = true;
     _loadError = null;
     _safeNotify();
@@ -84,13 +86,24 @@ class StoryResultProvider extends ChangeNotifier {
           background: p.location ?? '',
           mainEvent: p.event ?? '',
           childAge: childAge,
+          requestId: p.generationRequestIdFor(
+            childProfileId: childProfileId,
+            characterId: characterId,
+            background: p.location ?? '',
+            mainEvent: p.event ?? '',
+            childAge: childAge,
+          ),
         );
         _story = created;
         _storyId = created.storyId;
       }
+    } on StoryGenerationFailedException catch (error) {
+      payload?.resetGenerationRequest();
+      _loadError = error.message;
     } on ApiException catch (error) {
       _loadError = error.message;
     } finally {
+      _loadInProgress = false;
       _isLoading = false;
       _safeNotify();
     }

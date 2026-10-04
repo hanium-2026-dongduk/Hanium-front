@@ -4,7 +4,14 @@ import '../core/api_client.dart';
 import '../core/api_exception.dart';
 import '../core/api_response.dart';
 import '../models/page_result.dart';
+import '../models/json_parse.dart';
 import '../models/story.dart';
+
+/// 서버가 생성 작업을 실패로 확정했다. 같은 키로 다시 제출해도 실패가 재생된다.
+class StoryGenerationFailedException extends ApiException {
+  const StoryGenerationFailedException(String message)
+    : super(message: message);
+}
 
 /// 동화 생성·조회·삭제·즐겨찾기. (P-SG01~05, P-LB01~05)
 ///
@@ -13,25 +20,29 @@ import '../models/story.dart';
 /// back#40 6번) 요청에 넣지 않는다.
 class StoryService {
   final ApiClient _apiClient;
+  final Duration _pollInterval;
+  final Duration _pollTimeout;
 
-  StoryService(this._apiClient);
+  StoryService(
+    this._apiClient, {
+    Duration pollInterval = const Duration(seconds: 2),
+    Duration pollTimeout = const Duration(minutes: 5),
+  }) : _pollInterval = pollInterval,
+       _pollTimeout = pollTimeout;
 
-  /// 텍스트 생성 후 페이지마다 이미지·TTS를 순서대로 만들어 기본 수신 제한(10초)으로는
-  /// 모자라다. 운영 Nginx는 60초 제한이라 그래도 504가 날 수 있어 별도로 요청해뒀다
-  /// (back#40 1번).
-  static const Duration _createTimeout = Duration(seconds: 120);
-
-  /// POST /api/stories → 201 data { character, setting, storyId, title, pages[], choices[] }
+  /// POST /api/stories → 202 작업 접수 → 상태 조회 → 상세 조회.
   ///
-  /// 캐릭터를 찾을 수 없으면 404, 배경/사건이 비어 있으면 400, AI 생성 실패는 500이다.
+  /// 응답을 못 받은 요청을 재시도해도 중복 생성되지 않도록 같은 [requestId]를 보낸다.
+  /// 백엔드가 실패 상태로 확정한 작업은 새 요청 ID로 다시 시작해야 한다.
   Future<StoryDetail> createStory({
     required int childProfileId,
     required int characterId,
     required String background,
     required String mainEvent,
+    required String requestId,
     int? childAge,
-  }) {
-    return _call(
+  }) async {
+    var job = await _call(
       () => _apiClient.dio.post<Map<String, dynamic>>(
         '/stories',
         data: {
@@ -41,10 +52,49 @@ class StoryService {
           'mainEvent': mainEvent,
           if (childAge != null) 'childAge': childAge,
         },
-        options: Options(receiveTimeout: _createTimeout),
+        options: Options(headers: {'Idempotency-Key': requestId}),
       ),
-      (response) => StoryDetail.fromJson(ApiResponse.data(response)),
+      ApiResponse.data,
     );
+    final jobId = parseId(job['jobId']);
+    if (jobId < 1) {
+      throw const ApiException(message: '동화 생성 작업 응답이 올바르지 않아요.');
+    }
+
+    final deadline = DateTime.now().add(_pollTimeout);
+    while (true) {
+      switch (job['status']) {
+        case 'completed':
+          final storyId = parseId(job['storyId']);
+          if (storyId < 1) {
+            throw const ApiException(message: '완료된 동화의 ID가 올바르지 않아요.');
+          }
+          return fetchStory(childProfileId: childProfileId, storyId: storyId);
+        case 'failed':
+          throw StoryGenerationFailedException(
+            job['errorMessage'] is String
+                ? job['errorMessage'] as String
+                : '동화 생성에 실패했어요. 다시 만들어 주세요.',
+          );
+        case 'pending':
+        case 'processing':
+          if (DateTime.now().isAfter(deadline)) {
+            throw const ApiException(
+              message: '동화를 계속 만들고 있어요. 잠시 후 다시 시도하면 같은 작업을 확인할 수 있어요.',
+            );
+          }
+          await Future<void>.delayed(_pollInterval);
+          job = await _call(
+            () => _apiClient.dio.get<Map<String, dynamic>>(
+              '/stories/generations/$jobId',
+            ),
+            ApiResponse.data,
+          );
+          continue;
+        default:
+          throw const ApiException(message: '동화 생성 작업 상태가 올바르지 않아요.');
+      }
+    }
   }
 
   /// GET /api/stories?child_profile_id&sort&favorite&page&limit → { items, pagination }
@@ -77,7 +127,7 @@ class StoryService {
     );
   }
 
-  /// GET /api/stories/:id?child_profile_id= → data { storyId, title, pages }
+  /// GET /api/stories/:id?child_profile_id= → data { storyId, title, character, setting, coverImageUrl, pages, choices }
   /// 소유하지 않았고 공개도 아니면 404.
   Future<StoryDetail> fetchStory({
     required int childProfileId,
