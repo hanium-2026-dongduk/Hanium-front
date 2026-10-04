@@ -26,6 +26,7 @@ import 'services/sticker_service.dart';
 import 'services/character_service.dart';
 import 'services/story_service.dart';
 import 'services/tts_service.dart';
+import 'services/usage_service.dart';
 import 'services/vocabulary_service.dart';
 import 'theme/theme.dart';
 import 'screens/tutorial_screen.dart';
@@ -141,6 +142,7 @@ class _MyAppState extends State<MyApp> {
           ),
         ),
         Provider<DashboardService>(create: (_) => DashboardService(_apiClient)),
+        Provider<UsageService>(create: (_) => UsageService(_apiClient)),
         Provider<StickerService>(create: (_) => StickerService(_apiClient)),
         // 퀴즈(QZ01~03). QuizProvider는 앱 전역이 아니라 퀴즈 화면이 열릴 때마다 만든다.
         Provider<QuizService>(create: (_) => QuizService(_apiClient)),
