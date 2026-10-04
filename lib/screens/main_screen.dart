@@ -196,14 +196,8 @@ class _MainScreenState extends State<MainScreen> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const VocaScreen(),
-                          ),
-                        );
-                      },
+                      // 퀴즈를 풀고 돌아오면 대시보드 요약이 바뀌므로 다시 불러온다(#45).
+                      onTap: () => _openAndRefresh(const VocaScreen()),
                       borderRadius: BorderRadius.circular(24),
                       child: _buildSquareCard(
                         '단어 퀴즈',
@@ -278,14 +272,24 @@ class _MainScreenState extends State<MainScreen> {
                     color: AppTheme.pastelGreen,
                     borderRadius: BorderRadius.circular(30),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildActionCard(
-                      'Word Quiz',
-                      Icons.quiz_outlined,
-                      Colors.white,
-                      () => _openAndRefresh(const VocaScreen()),
-                    ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.calendar_month,
+                        color: AppTheme.navyColor,
+                        size: 28,
+                      ),
+                      SizedBox(width: 10),
+                      Text(
+                        "출석 체크",
+                        style: TextStyle(
+                          color: AppTheme.navyColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
