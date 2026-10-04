@@ -6,17 +6,11 @@ import '../../theme/theme.dart';
 import '../../utils/validators.dart';
 import '../../widgets/app_text_field.dart';
 
-/// 진행 단계. 로그인 상태라 이메일은 이미 알고 있어 [request]에서 곧바로
-/// 인증번호 발송을 요청하고, 성공하면 [confirm]으로 넘어간다.
-enum _Step { request, confirm }
-
 /// P-TU-ST06 비밀번호 변경 화면.
 ///
-/// 백엔드에는 "로그인 상태에서 현재 비밀번호로 바꾸는" 전용 API가 없고,
-/// 이메일 인증번호 기반 재설정 API(AU03, `PasswordResetScreen`과 동일한
-/// `POST /auth/password/reset-request` + `PUT /auth/password/reset`)만 있다.
-/// 그래서 이 화면은 그 API를 그대로 재사용하되, 로그인된 사용자의 이메일을
-/// 이미 알고 있으니 이메일 입력 단계를 생략한다.
+/// 로그인 상태이므로 이메일 인증 없이 현재 비밀번호로 본인 확인을 대신한다
+/// (`PUT /auth/password/change`, UC-ST-03). 현재 비밀번호가 틀리면 서버 메시지를
+/// 그대로 보여주고 머무른다.
 ///
 /// 성공하면 서버가 그 계정의 refresh token을 전부 폐기하므로, 다이얼로그로
 /// 안내한 뒤 로컬 세션도 정리(logout)한다. AuthGate가 로그인 화면으로 바꿔주는
@@ -32,45 +26,34 @@ class ChangePasswordScreen extends StatefulWidget {
 
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _codeController = TextEditingController();
+  final _currentPasswordController = TextEditingController();
   final _passwordController = TextEditingController();
   final _passwordConfirmController = TextEditingController();
 
-  _Step _step = _Step.request;
-
   @override
   void dispose() {
-    _codeController.dispose();
+    _currentPasswordController.dispose();
     _passwordController.dispose();
     _passwordConfirmController.dispose();
     super.dispose();
   }
 
-  String get _email => context.read<AuthProvider>().user?.email ?? '';
-
-  Future<void> _requestCode() async {
-    if (await context.read<AuthProvider>().sendPasswordResetCode(_email) &&
-        mounted) {
-      setState(() => _step = _Step.confirm);
+  /// 서버 정책 검사에 더해, 지금 쓰는 비밀번호와 같으면 바꿀 의미가 없으므로 막는다.
+  String? _validateNewPassword(String? value) {
+    final error = Validators.password(value);
+    if (error != null) return error;
+    if (value == _currentPasswordController.text) {
+      return '지금 쓰는 비밀번호와 다르게 정해 주세요.';
     }
+    return null;
   }
 
-  Future<void> _resendCode() async {
-    if (await context.read<AuthProvider>().sendPasswordResetCode(_email) &&
-        mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('인증번호를 다시 보냈어요.')));
-    }
-  }
-
-  Future<void> _confirm() async {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     final auth = context.read<AuthProvider>();
-    final done = await auth.resetPassword(
-      email: _email,
-      code: _codeController.text.trim(),
+    final done = await auth.changePassword(
+      currentPassword: _currentPasswordController.text,
       newPassword: _passwordController.text,
     );
     if (!done || !mounted) return;
@@ -96,7 +79,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final isRequestStep = _step == _Step.request;
 
     return Scaffold(
       appBar: AppBar(title: const Text('비밀번호 변경')),
@@ -108,47 +90,34 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  isRequestStep
-                      ? '$_email(으)로 인증번호를 보내드려요.'
-                      : '메일로 받은 숫자 6자리와 새로 쓸 비밀번호를 입력해 주세요.',
-                  style: const TextStyle(color: Colors.white70),
+                const Text(
+                  '지금 쓰는 비밀번호를 확인한 뒤 새 비밀번호로 바꿔요.',
+                  style: TextStyle(color: Colors.white70),
                 ),
-                if (!isRequestStep) ...[
-                  const SizedBox(height: 24),
-                  AppTextField(
-                    controller: _codeController,
-                    label: '인증번호 6자리',
-                    keyboardType: TextInputType.number,
-                    validator: Validators.verificationCode,
-                  ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: auth.isSubmitting ? null : _resendCode,
-                      child: const Text(
-                        '인증번호 다시 받기',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                    ),
-                  ),
-                  AppTextField(
-                    controller: _passwordController,
-                    label: '새 비밀번호',
-                    helperText: '8자 이상, 영문·숫자·특수문자를 각각 넣어 주세요.',
-                    obscureText: true,
-                    validator: Validators.password,
-                  ),
-                  const SizedBox(height: 16),
-                  AppTextField(
-                    controller: _passwordConfirmController,
-                    label: '새 비밀번호 확인',
-                    obscureText: true,
-                    validator: (value) => value == _passwordController.text
-                        ? null
-                        : '비밀번호가 일치하지 않아요.',
-                  ),
-                ],
+                const SizedBox(height: 24),
+                AppTextField(
+                  controller: _currentPasswordController,
+                  label: '현재 비밀번호',
+                  obscureText: true,
+                  validator: (value) => Validators.required(value, '현재 비밀번호'),
+                ),
+                const SizedBox(height: 16),
+                AppTextField(
+                  controller: _passwordController,
+                  label: '새 비밀번호',
+                  helperText: '8자 이상, 영문·숫자·특수문자를 각각 넣어 주세요.',
+                  obscureText: true,
+                  validator: _validateNewPassword,
+                ),
+                const SizedBox(height: 16),
+                AppTextField(
+                  controller: _passwordConfirmController,
+                  label: '새 비밀번호 확인',
+                  obscureText: true,
+                  validator: (value) => value == _passwordController.text
+                      ? null
+                      : '비밀번호가 일치하지 않아요.',
+                ),
                 if (auth.errorMessage != null) ...[
                   const SizedBox(height: 16),
                   Text(
@@ -161,9 +130,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 SizedBox(
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: auth.isSubmitting
-                        ? null
-                        : (isRequestStep ? _requestCode : _confirm),
+                    onPressed: auth.isSubmitting ? null : _submit,
                     child: auth.isSubmitting
                         ? const SizedBox(
                             width: 24,
@@ -173,7 +140,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                               color: AppTheme.navyColor,
                             ),
                           )
-                        : Text(isRequestStep ? '인증번호 받기' : '비밀번호 바꾸기'),
+                        : const Text('비밀번호 바꾸기'),
                   ),
                 ),
               ],
