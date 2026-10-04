@@ -136,6 +136,21 @@ class AuthProvider extends ChangeNotifier {
     );
   }
 
+  /// P-TU-ST06 비밀번호 변경. 현재 비밀번호로 본인 확인 후 새 비밀번호로 바꾼다.
+  ///
+  /// 성공하면 서버가 모든 세션을 끊으므로, 화면에서 안내한 뒤 [logout]을 불러야 한다.
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) {
+    return _run(
+      () => _authService.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      ),
+    );
+  }
+
   Future<void> logout() async {
     // 서버가 폐기할 대상을 알아야 하므로 지우기 전에 읽어둔다.
     final refreshToken = await _tokenStorage.readRefreshToken();
