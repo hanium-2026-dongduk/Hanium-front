@@ -98,7 +98,8 @@ void main() {
     ]);
     await pumpScreen(tester, service);
 
-    await tester.tap(find.widgetWithText(FilterChip, '출석'));
+    // 필터칩은 FilterChip이 아니라 InkWell로 감싼 커스텀 칩이다(#43).
+    await tester.tap(find.widgetWithText(InkWell, '출석'));
     await tester.pumpAndSettle();
 
     expect(service.requestedReasons.last, 'attendance');
