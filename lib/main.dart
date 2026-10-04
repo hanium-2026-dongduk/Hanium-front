@@ -155,6 +155,7 @@ class _MyAppState extends State<MyApp> {
           create: (context) => LearningStatsProvider(
             attendanceService: context.read<AttendanceService>(),
             dashboardService: context.read<DashboardService>(),
+            usageService: context.read<UsageService>(),
           ),
         ),
         ChangeNotifierProvider<ReceivedStickerProvider>(
