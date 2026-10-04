@@ -25,10 +25,7 @@ class StoryPage {
   }
 }
 
-/// 동화 생성 직후(`POST /api/stories`)와 상세 조회(`GET /api/stories/:id`)가 함께 쓰는 모양.
-///
-/// 상세 조회 응답에는 `character`·`setting`·`choices`가 들어 있지 않다(back#40에서
-/// 확인 요청함). 생성 직후에만 채워질 수 있는 값들이라 전부 nullable/빈 값으로 둔다.
+/// 저장된 동화 상세(`GET /api/stories/:id`). 비동기 생성 완료 후에도 이 API로 받는다.
 class StoryDetail {
   final int storyId;
   final String title;
@@ -37,8 +34,7 @@ class StoryDetail {
   final String? background;
   final String? mainEvent;
 
-  /// 다음 이야기 선택지. 생성 응답에만 오고 서버에 저장되지 않아, 상세 조회로
-  /// 다시 열면 항상 비어 있다. 분기 API가 없어 읽기 전용으로만 보여준다.
+  /// 다음 이야기 선택지. 이전에 생성된 동화는 빈 배열로 내려올 수 있다.
   final List<String> choices;
 
   const StoryDetail({
