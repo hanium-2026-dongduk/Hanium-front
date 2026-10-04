@@ -201,6 +201,49 @@ void main() {
     );
   });
 
+  group('비밀번호 변경(ST06)은', () {
+    test('현재·새 비밀번호를 넘기고 성공을 알리되 로그인 상태는 직접 바꾸지 않는다', () async {
+      when(
+        () => authService.changePassword(
+          currentPassword: 'Current1!',
+          newPassword: 'Password1!',
+        ),
+      ).thenAnswer((_) async {});
+
+      final result = await provider.changePassword(
+        currentPassword: 'Current1!',
+        newPassword: 'Password1!',
+      );
+
+      expect(result, isTrue);
+      expect(provider.isSubmitting, isFalse);
+      expect(provider.errorMessage, isNull);
+      expect(notifications, 2);
+      // 로그아웃은 화면이 안내를 보여준 뒤 따로 부른다.
+      verifyNever(() => tokenStorage.clear());
+    });
+
+    test('현재 비밀번호가 틀리면 서버 메시지를 남기고 실패를 알린다', () async {
+      when(
+        () => authService.changePassword(
+          currentPassword: 'wrong',
+          newPassword: 'Password1!',
+        ),
+      ).thenThrow(
+        const ApiException(statusCode: 401, message: '현재 비밀번호가 일치하지 않습니다.'),
+      );
+
+      final result = await provider.changePassword(
+        currentPassword: 'wrong',
+        newPassword: 'Password1!',
+      );
+
+      expect(result, isFalse);
+      expect(provider.isSubmitting, isFalse);
+      expect(provider.errorMessage, '현재 비밀번호가 일치하지 않습니다.');
+    });
+  });
+
   group('회원가입 3단계는', () {
     test('1단계에서 인증번호 발송을 요청한다', () async {
       when(

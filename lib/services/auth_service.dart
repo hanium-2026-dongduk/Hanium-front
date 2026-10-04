@@ -143,6 +143,25 @@ class AuthService {
     );
   }
 
+  /// P-TU-ST06 비밀번호 변경. PUT /api/auth/password/change
+  ///
+  /// 로그인 상태에서 현재 비밀번호로 본인 확인을 대신하므로 인증번호가 필요 없다.
+  /// 현재 비밀번호가 틀리면 401이 온다. ApiClient가 토큰 갱신 후 한 번 재시도하지만
+  /// 리프레시 토큰은 멀쩡하므로 세션은 유지되고, 서버 메시지가 그대로 전달된다.
+  ///
+  /// 성공하면 그 계정의 리프레시 토큰이 전부 폐기되므로 다시 로그인해야 한다.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _send(
+      () => _apiClient.dio.put<Map<String, dynamic>>(
+        '/auth/password/change',
+        data: {'currentPassword': currentPassword, 'newPassword': newPassword},
+      ),
+    );
+  }
+
   /// POST /api/auth/logout — 서버가 해당 리프레시 토큰을 폐기한다.
   /// 바디에 refreshToken을 담아야 하며, 실패해도 앱은 어차피 로컬 토큰을 지우므로
   /// 예외를 삼킨다.
