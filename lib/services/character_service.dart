@@ -16,9 +16,12 @@ class CharacterService {
   CharacterService(this._apiClient);
 
   /// GET /api/characters → data: [Character]
-  Future<List<Character>> fetchCharacters() {
+  Future<List<Character>> fetchCharacters(int childProfileId) {
     return _call(
-      () => _apiClient.dio.get<Map<String, dynamic>>('/characters'),
+      () => _apiClient.dio.get<Map<String, dynamic>>(
+        '/characters',
+        queryParameters: {'child_profile_id': childProfileId},
+      ),
       (response) =>
           ApiResponse.dataList(response).map(Character.fromJson).toList(),
     );
@@ -27,6 +30,7 @@ class CharacterService {
   /// POST /api/characters { name, personality, description, imageUrl, type } → data: Character
   /// name이 비어 있으면 400.
   Future<Character> createCharacter({
+    required int childProfileId, // 필수 파라미터로 추가
     required String name,
     String personality = '밝음',
     String description = '',
@@ -37,6 +41,7 @@ class CharacterService {
       () => _apiClient.dio.post<Map<String, dynamic>>(
         '/characters',
         data: {
+          'child_profile_id': childProfileId, // 서버로 전송
           'name': name,
           'personality': personality,
           'description': description,

@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:hanium_front/providers/active_child_provider.dart';
 import 'package:hanium_front/theme/theme.dart';
 import 'package:hanium_front/screens/story_setting_screen.dart';
 import 'package:hanium_front/models/story_payload.dart';
@@ -31,10 +32,19 @@ class StoryCreationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // ✨ 현재 선택된 자녀의 ID를 가져옵니다.
+    final childProfileId = context.read<ActiveChildProvider>().childProfileId;
+
+    // 만약 자녀가 선택되지 않은 상태에서 이 화면에 들어왔다면 돌려보냅니다.
+    if (childProfileId == null) {
+      return const Scaffold(body: Center(child: Text('먼저 자녀 프로필을 선택해 주세요.')));
+    }
+
     return ChangeNotifierProvider<CharacterProvider>(
-      create: (context) =>
-          CharacterProvider(characterService: context.read<CharacterService>())
-            ..load(),
+      create: (context) => CharacterProvider(
+        characterService: context.read<CharacterService>(),
+        childProfileId: childProfileId, // ✨ 프로바이더 생성 시 ID를 넘겨줍니다.
+      )..load(),
       child: const _StoryCreationView(),
     );
   }
@@ -161,7 +171,10 @@ class _StoryCreationViewState extends State<_StoryCreationView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('✨ 새로운 동화 만들기')),
+      appBar: AppBar(
+        title: const Text('✨ 새로운 동화 만들기'),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       // 태블릿 대응: 전체 콘텐츠를 가운데 정렬하고 최대 너비(700) 제한
       body: Center(
         child: ConstrainedBox(

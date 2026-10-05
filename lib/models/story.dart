@@ -85,12 +85,14 @@ class StorySummary {
   final String title;
   final bool isFavorite;
   final DateTime? createdAt;
+  final String? coverImageUrl; // ✨ 썸네일 이미지 URL 필드 추가
 
   const StorySummary({
     required this.storyId,
     required this.title,
     required this.isFavorite,
     this.createdAt,
+    this.coverImageUrl, // ✨ 생성자에 추가
   });
 
   factory StorySummary.fromJson(Map<String, dynamic> json) {
@@ -99,6 +101,7 @@ class StorySummary {
       title: json['title'] as String? ?? '',
       isFavorite: json['isFavorite'] == true,
       createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
+      coverImageUrl: json['coverImageUrl'] as String?, // ✨ JSON에서 값 읽어오기
     );
   }
 }
