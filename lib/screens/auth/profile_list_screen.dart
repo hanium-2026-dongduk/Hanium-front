@@ -19,8 +19,14 @@ import '../settings/account_security_screen.dart';
 ///
 /// 목록은 이 화면 안에서만 쓰는 상태라 Provider까지 올리지 않고 StatefulWidget으로 둔다.
 /// 여러 화면이 프로필을 공유하게 되면 그때 ProfileProvider로 승격하면 된다.
+///
+/// [isSwitching]이 true면 메인 화면에서 들어온 프로필 전환(#42)이다. 아동이 쓰는
+/// 화면에서 열리므로 추가·수정·삭제는 숨기고 고르기만 하며, 고르면 새 메인 화면을
+/// 쌓지 않고 고른 프로필을 들고 이전 메인 화면으로 돌아간다.
 class ProfileListScreen extends StatefulWidget {
-  const ProfileListScreen({super.key});
+  final bool isSwitching;
+
+  const ProfileListScreen({super.key, this.isSwitching = false});
 
   @override
   State<ProfileListScreen> createState() => _ProfileListScreenState();
@@ -101,6 +107,10 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
   /// 이미 활성인 프로필을 다시 탭했을 때도 같은 경로로 메인 화면에 들어간다.
   void _enterMainScreen(ChildProfile profile) {
     context.read<ActiveChildProvider>().setActiveChild(profile);
+    if (widget.isSwitching) {
+      Navigator.of(context).pop(profile);
+      return;
+    }
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(builder: (_) => const MainScreen()),
     );
@@ -133,6 +143,13 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.isSwitching) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('누구랑 읽을까요?')),
+        body: RefreshIndicator(onRefresh: _loadProfiles, child: _buildBody()),
+      );
+    }
+
     // 서버 users에 이름 컬럼이 없어서 계정 식별은 이메일로 보여준다.
     final user = context.watch<AuthProvider>().user;
 
@@ -167,7 +184,10 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
       errorMessage: _errorMessage,
       onRetry: _loadProfiles,
       isEmpty: _profiles.isEmpty,
-      emptyMessage: '아직 등록된 자녀 프로필이 없어요.\n+ 버튼으로 추가해 주세요.',
+      // 전환 모드에는 + 버튼이 없으므로 다른 안내를 보여준다.
+      emptyMessage: widget.isSwitching
+          ? '아직 고를 수 있는 프로필이 없어요.'
+          : '아직 등록된 자녀 프로필이 없어요.\n+ 버튼으로 추가해 주세요.',
       contentBuilder: (_) => _buildProfileList(),
     );
   }
@@ -227,21 +247,26 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
               _describe(profile),
               style: const TextStyle(color: Colors.white70),
             ),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  onPressed: () => _openEditor(existing: profile),
-                  icon: const Icon(Icons.edit, color: Colors.white70),
-                  tooltip: '수정',
-                ),
-                IconButton(
-                  onPressed: () => _deleteProfile(profile),
-                  icon: const Icon(Icons.delete_outline, color: Colors.white70),
-                  tooltip: '삭제',
-                ),
-              ],
-            ),
+            trailing: widget.isSwitching
+                ? null
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: () => _openEditor(existing: profile),
+                        icon: const Icon(Icons.edit, color: Colors.white70),
+                        tooltip: '수정',
+                      ),
+                      IconButton(
+                        onPressed: () => _deleteProfile(profile),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.white70,
+                        ),
+                        tooltip: '삭제',
+                      ),
+                    ],
+                  ),
           ),
         );
       },
@@ -422,4 +447,3 @@ class _LearningLevelPicker extends StatelessWidget {
     );
   }
 }
-

@@ -58,6 +58,7 @@ class _FakeProfileService implements ProfileService {
   List<ChildProfile> _profiles;
 
   ApiException? fetchError;
+  ApiException? activateError;
   final List<int> activatedIds = [];
   final List<int> deletedIds = [];
   final List<ChildProfile> created = [];
@@ -71,6 +72,7 @@ class _FakeProfileService implements ProfileService {
 
   @override
   Future<ChildProfile> activateProfile(int childProfileId) async {
+    if (activateError != null) throw activateError!;
     activatedIds.add(childProfileId);
     // 서버처럼 활성은 하나만 남긴다.
     _profiles = _profiles
@@ -297,6 +299,122 @@ void main() {
 
     expect(find.text('나이는 1살부터 15살까지 넣을 수 있어요.'), findsOneWidget);
     expect(service.created, isEmpty);
+  });
+
+  group('메인 화면에서 들어온 프로필 전환(#42)', () {
+    late ActiveChildProvider activeChild;
+
+    /// 전환 화면은 메인 화면 위에 push되므로, 그 상황을 버튼 하나짜리 홈으로 흉내 낸다.
+    Future<List<ChildProfile?>> pumpSwitching(
+      WidgetTester tester,
+      _FakeProfileService service,
+    ) async {
+      final results = <ChildProfile?>[];
+      activeChild = ActiveChildProvider(profileService: service);
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            Provider<ProfileService>.value(value: service),
+            ChangeNotifierProvider<ActiveChildProvider>.value(
+              value: activeChild,
+            ),
+          ],
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  results.add(
+                    await Navigator.of(context).push<ChildProfile>(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            const ProfileListScreen(isSwitching: true),
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('열기'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('열기'));
+      await tester.pumpAndSettle();
+      return results;
+    }
+
+    testWidgets('고르기만 할 수 있게 추가·수정·삭제를 숨긴다', (tester) async {
+      await pumpSwitching(
+        tester,
+        _FakeProfileService([
+          const ChildProfile(
+            childProfileId: 1,
+            childName: '첫째',
+            isActive: true,
+          ),
+          const ChildProfile(childProfileId: 2, childName: '둘째'),
+        ]),
+      );
+
+      expect(find.text('누구랑 읽을까요?'), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.byTooltip('수정'), findsNothing);
+      expect(find.byTooltip('삭제'), findsNothing);
+      expect(find.byTooltip('계정 보안'), findsNothing);
+    });
+
+    testWidgets('다른 자녀를 고르면 활성으로 바꾸고 새 메인 화면 없이 돌아간다', (tester) async {
+      final service = _FakeProfileService([
+        const ChildProfile(childProfileId: 1, childName: '첫째', isActive: true),
+        const ChildProfile(childProfileId: 2, childName: '둘째'),
+      ]);
+      final results = await pumpSwitching(tester, service);
+
+      await tester.tap(find.text('둘째'));
+      await tester.pumpAndSettle();
+
+      expect(service.activatedIds, [2]);
+      expect(activeChild.childProfileId, 2);
+      expect(results.single?.childProfileId, 2);
+      expect(find.byType(ProfileListScreen), findsNothing);
+      expect(find.byType(MainScreen), findsNothing);
+      expect(find.text('열기'), findsOneWidget);
+    });
+
+    testWidgets('지금 자녀를 다시 고르면 전환 요청 없이 돌아간다', (tester) async {
+      final service = _FakeProfileService([
+        const ChildProfile(childProfileId: 1, childName: '첫째', isActive: true),
+      ]);
+      final results = await pumpSwitching(tester, service);
+
+      await tester.tap(find.text('첫째'));
+      await tester.pumpAndSettle();
+
+      expect(service.activatedIds, isEmpty);
+      expect(results.single?.childProfileId, 1);
+      expect(find.text('열기'), findsOneWidget);
+    });
+
+    testWidgets('프로필이 없으면 + 버튼 안내 없이 빈 상태를 보여준다', (tester) async {
+      await pumpSwitching(tester, _FakeProfileService([]));
+
+      expect(find.text('아직 고를 수 있는 프로필이 없어요.'), findsOneWidget);
+    });
+
+    testWidgets('전환에 실패하면 화면에 남아 안내한다', (tester) async {
+      final service = _FakeProfileService([
+        const ChildProfile(childProfileId: 1, childName: '첫째', isActive: true),
+        const ChildProfile(childProfileId: 2, childName: '둘째'),
+      ])..activateError = const ApiException(message: '잠시 후 다시 해 볼까요?');
+      await pumpSwitching(tester, service);
+
+      await tester.tap(find.text('둘째'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('잠시 후 다시 해 볼까요?'), findsOneWidget);
+      expect(find.byType(ProfileListScreen), findsOneWidget);
+      expect(activeChild.childProfileId, isNull);
+    });
   });
 
   testWidgets('수정 시트는 기존 값을 채워두고 id를 유지한 채 저장한다', (tester) async {
