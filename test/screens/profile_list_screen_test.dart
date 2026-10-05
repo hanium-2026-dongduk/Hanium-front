@@ -321,18 +321,21 @@ void main() {
           ],
           child: MaterialApp(
             home: Builder(
-              builder: (context) => ElevatedButton(
-                onPressed: () async {
-                  results.add(
-                    await Navigator.of(context).push<ChildProfile>(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            const ProfileListScreen(isSwitching: true),
+              // 화면 전체를 덮지 않게 가운데 둔다. 닫히는 화면 너머 탭이 눌리지 않도록.
+              builder: (context) => Center(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    results.add(
+                      await Navigator.of(context).push<ChildProfile>(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const ProfileListScreen(isSwitching: true),
+                        ),
                       ),
-                    ),
-                  );
-                },
-                child: const Text('열기'),
+                    );
+                  },
+                  child: const Text('열기'),
+                ),
               ),
             ),
           ),
@@ -392,6 +395,24 @@ void main() {
 
       expect(service.activatedIds, isEmpty);
       expect(results.single?.childProfileId, 1);
+      expect(find.text('열기'), findsOneWidget);
+    });
+
+    testWidgets('연타해도 한 번만 전환하고 메인 화면까지 닫지 않는다', (tester) async {
+      final service = _FakeProfileService([
+        const ChildProfile(childProfileId: 1, childName: '첫째', isActive: true),
+        const ChildProfile(childProfileId: 2, childName: '둘째'),
+      ]);
+      final results = await pumpSwitching(tester, service);
+
+      await tester.tap(find.text('둘째'));
+      await tester.tap(find.text('둘째'), warnIfMissed: false);
+      await tester.pump();
+      await tester.tap(find.text('둘째'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+
+      expect(service.activatedIds, [2]);
+      expect(results, hasLength(1));
       expect(find.text('열기'), findsOneWidget);
     });
 

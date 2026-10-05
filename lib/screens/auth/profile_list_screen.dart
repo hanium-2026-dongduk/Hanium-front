@@ -37,6 +37,10 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
   bool _isLoading = true;
   String? _errorMessage;
 
+  /// 아동이 프로필을 연타해도 전환 요청·화면 이동이 한 번만 일어나게 막는다.
+  bool _isSelecting = false;
+  bool _hasLeft = false;
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +97,8 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
   /// 활성 프로필 전환은 전용 API로만 되고, 한 번에 한 명만 활성일 수 있다.
   /// 전환에 성공하면 곧바로 메인 화면으로 들어간다.
   Future<void> _activateProfile(ChildProfile profile) async {
+    if (_isSelecting) return;
+    _isSelecting = true;
     try {
       final activated = await context.read<ProfileService>().activateProfile(
         profile.childProfileId,
@@ -100,12 +106,16 @@ class _ProfileListScreenState extends State<ProfileListScreen> {
       if (!mounted) return;
       _enterMainScreen(activated);
     } on ApiException catch (error) {
+      _isSelecting = false;
       _showMessage(error.message);
     }
   }
 
   /// 이미 활성인 프로필을 다시 탭했을 때도 같은 경로로 메인 화면에 들어간다.
   void _enterMainScreen(ChildProfile profile) {
+    // 전환 모드에서 연타하면 pop이 두 번 돼 메인 화면까지 닫히므로 한 번만 받는다.
+    if (_hasLeft) return;
+    _hasLeft = true;
     context.read<ActiveChildProvider>().setActiveChild(profile);
     if (widget.isSwitching) {
       Navigator.of(context).pop(profile);
