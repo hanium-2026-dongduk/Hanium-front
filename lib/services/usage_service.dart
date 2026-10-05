@@ -5,7 +5,7 @@ import '../core/api_exception.dart';
 import '../core/api_response.dart';
 import '../models/usage_summary.dart';
 
-/// 학습(앱 사용) 시간 조회. (P-MY-MP03)
+/// 학습(앱 사용) 시간 조회. (P-MY-MP03, 보호자 대시보드)
 class UsageService {
   final ApiClient _apiClient;
 
@@ -28,5 +28,10 @@ class UsageService {
     } on DioException catch (error) {
       throw ApiException.fromDio(error);
     }
+  }
+
+  Future<Map<String, dynamic>> getTodayUsage(int childId) async {
+    final response = await _apiClient.dio.get('/api/usage/$childId/today');
+    return response.data['data'];
   }
 }

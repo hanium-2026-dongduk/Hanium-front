@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:hanium_front/theme/theme.dart';
+import 'package:hanium_front/providers/parent_dashboard_provider.dart';
+import 'package:hanium_front/models/child_profile.dart';
 
 class ParentScreen extends StatefulWidget {
   const ParentScreen({super.key});
@@ -9,113 +12,169 @@ class ParentScreen extends StatefulWidget {
 }
 
 class _ParentScreenState extends State<ParentScreen> {
-  String selectedChild = '김우진 (6)';
-  final List<String> childrenList = ['김우진 (6)', '김지아 (4)'];
-
-  // ✨ 주간/월간 상태를 관리하는 변수 추가
   bool isWeeklyStats = true;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ParentDashboardProvider>().loadInitialData();
+    });
+  }
+
+  // PD04: 칭찬 스티커 바텀 시트
+  void _showStickerSheet(BuildContext context, ParentDashboardProvider provider, ChildProfile child) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.navyColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('${child.childName}에게 칭찬 스티커 보내기', style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: provider.stickers.map((sticker) {
+                  return InkWell(
+                    onTap: () async {
+                      Navigator.pop(ctx);
+                      final success = await provider.sendSticker(child.childProfileId, sticker['sticker_code'], '참 잘했어요!');
+
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(success ? '스티커를 보냈어요!' : '스티커 발송에 실패했습니다.')),
+                      );
+                    },
+                    child: Column(
+                      children: [
+                        const CircleAvatar(radius: 30, backgroundColor: AppTheme.yellowColor, child: Icon(Icons.star, color: Colors.orange)),
+                        const SizedBox(height: 8),
+                        Text(sticker['name'] ?? '', style: const TextStyle(color: Colors.white)),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 32),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final provider = context.watch<ParentDashboardProvider>();
+
     return Scaffold(
       backgroundColor: AppTheme.navyColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('보호자용 화면', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text('보호자 대시보드', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 16.0),
+        child: provider.isLoading && provider.children.isEmpty
+            ? const Center(child: CircularProgressIndicator(color: AppTheme.yellowColor))
+            : provider.errorMessage != null
+            ? Center(
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 1. 자녀 프로필 선택 드롭다운
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('자녀 프로필 선택', style: TextStyle(color: Colors.white70, fontSize: 16)),
-                  const SizedBox(width: 16),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: selectedChild,
-                        dropdownColor: AppTheme.navyColor,
-                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                        icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
-                        onChanged: (String? newValue) {
-                          if (newValue != null) {
-                            setState(() {
-                              selectedChild = newValue;
-                            });
-                          }
-                        },
-                        items: childrenList.map<DropdownMenuItem<String>>((String value) {
-                          return DropdownMenuItem<String>(
-                            value: value,
-                            child: Row(
-                              children: [
-                                const CircleAvatar(
-                                  radius: 12,
-                                  backgroundColor: AppTheme.pastelBlue,
-                                  child: Icon(Icons.person, size: 16, color: AppTheme.navyColor),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(value),
-                              ],
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              // 2. 카드 3개 레이아웃
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 4,
-                      child: _buildProfileCard(),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 5,
-                      child: Column(
-                        children: [
-                          Expanded(flex: 5, child: _buildStatsCard()),
-                          const SizedBox(height: 16),
-                          Expanded(flex: 4, child: _buildLogCard()),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              Text(provider.errorMessage!, style: const TextStyle(color: Colors.redAccent)),
+              const SizedBox(height: 16),
+              ElevatedButton(onPressed: () => provider.loadInitialData(), child: const Text('다시 시도')),
             ],
           ),
-        ),
+        )
+            : _buildDashboardContent(context, provider),
       ),
     );
   }
 
-  // --- 공통 카드 래퍼 ---
+  Widget _buildDashboardContent(BuildContext context, ParentDashboardProvider provider) {
+    if (provider.children.isEmpty) {
+      return const Center(child: Text('등록된 자녀 프로필이 없습니다.', style: TextStyle(color: Colors.white70)));
+    }
+
+    final selectedChild = provider.selectedChild;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 16.0),
+      child: Column(
+        children: [
+          // 1. 자녀 선택
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('자녀 프로필 선택', style: TextStyle(color: Colors.white70, fontSize: 16)),
+              const SizedBox(width: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<ChildProfile>(
+                    value: selectedChild,
+                    dropdownColor: AppTheme.navyColor,
+                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                    onChanged: (ChildProfile? newValue) {
+                      if (newValue != null) provider.selectChild(newValue);
+                    },
+                    items: provider.children.map<DropdownMenuItem<ChildProfile>>((ChildProfile child) {
+                      return DropdownMenuItem<ChildProfile>(
+                        value: child,
+                        child: Text('${child.childName} ${child.age != null ? '(${child.age})' : ''}'),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          if (provider.isLoading)
+            const Expanded(child: Center(child: CircularProgressIndicator(color: AppTheme.pastelGreen)))
+          else if (selectedChild != null)
+            Expanded(
+              child: Row(
+                children: [
+                  Expanded(flex: 4, child: _buildProfileCard(context, provider, selectedChild)),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 5,
+                    child: Column(
+                      children: [
+                        Expanded(flex: 5, child: _buildUsageStatsCard(provider)), // PD02/03 사용 시간 연동
+                        const SizedBox(height: 16),
+                        Expanded(flex: 4, child: _buildSummaryCard(provider)), // PD02 대시보드 요약 연동
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDashboardCard({required String title, required Widget child}) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -123,43 +182,29 @@ class _ParentScreenState extends State<ParentScreen> {
         children: [
           Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
-          Expanded(
-            child: SingleChildScrollView(
-              child: child,
-            ),
-          ),
+          Expanded(child: SingleChildScrollView(child: child)),
         ],
       ),
     );
   }
 
-  // [왼쪽 전체] 자녀 프로필 정보 + 칭찬 스티커 버튼
-  Widget _buildProfileCard() {
+  Widget _buildProfileCard(BuildContext context, ParentDashboardProvider provider, ChildProfile child) {
     return _buildDashboardCard(
       title: '자녀 프로필 정보',
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const SizedBox(height: 16),
-          const CircleAvatar(
-            radius: 52,
-            backgroundColor: AppTheme.pastelGreen,
-            child: Icon(Icons.face, size: 60, color: AppTheme.navyColor),
-          ),
+          const CircleAvatar(radius: 52, backgroundColor: AppTheme.pastelGreen, child: Icon(Icons.face, size: 60, color: AppTheme.navyColor)),
           const SizedBox(height: 32),
-          _buildInfoRow('자녀 이름', selectedChild.split(' ')[0]),
+          _buildInfoRow('자녀 이름', child.childName),
           const SizedBox(height: 20),
-          _buildInfoRow('생년월일', '2018. 05. 20'),
-          const SizedBox(height: 20),
-          _buildInfoRow('나이', '6세'),
-
-          const SizedBox(height: 48), // 스티커 버튼 위 여백 확보
-
-          // ✨ 칭찬 스티커 버튼이 프로필 쪽으로 이사 옴!
+          _buildInfoRow('학습 수준', child.learningLevel.label),
+          const SizedBox(height: 48),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {},
+              onPressed: () => _showStickerSheet(context, provider, child), // 스티커 모달 연결
               icon: const Icon(Icons.star, color: AppTheme.yellowColor),
               label: const Text('칭찬 스티커 발송', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               style: ElevatedButton.styleFrom(
@@ -188,99 +233,52 @@ class _ParentScreenState extends State<ParentScreen> {
     );
   }
 
-  // [오른쪽 위] 자녀 학습 현황 조회 (주간/월간 토글 적용)
-  Widget _buildStatsCard() {
-    // 탭 상태에 따라 그래프 x축 라벨과 높이(데이터)가 달라짐
-    final List<String> xLabels = isWeeklyStats
-        ? ['일', '월', '화', '수', '목', '금', '토']
-        : ['1주차', '2주차', '3주차', '4주차'];
-
-    // ✨ 월간 데이터의 110.0을 100.0으로 낮춰서 오버플로우 방지
-    final List<double> dummyHeights = isWeeklyStats
-        ? [30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 100.0]
-        : [50.0, 90.0, 70.0, 100.0];
+  Widget _buildUsageStatsCard(ParentDashboardProvider provider) {
+    final accumulatedSeconds = provider.usageData?['accumulatedSeconds'] ?? 0;
+    final limitSeconds = provider.usageData?['limitSeconds'] ?? 3600;
+    final accumulatedMinutes = accumulatedSeconds ~/ 60;
+    final limitMinutes = limitSeconds ~/ 60;
+    final double progress = limitSeconds > 0 ? (accumulatedSeconds / limitSeconds).clamp(0.0, 1.0) : 0;
 
     return _buildDashboardCard(
-      title: '🕒 자녀 학습 현황 조회',
+      title: '🕒 오늘 사용 시간 (PD02)',
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                  isWeeklyStats ? '주간 학습 시간 (최근 7일)' : '월간 학습 시간 (최근 4주)',
-                  style: const TextStyle(color: Colors.white70)
-              ),
-              Row(
-                children: [
-                  _buildTabButton('주간', isWeeklyStats, () => setState(() => isWeeklyStats = true)),
-                  const SizedBox(width: 8),
-                  _buildTabButton('월간', !isWeeklyStats, () => setState(() => isWeeklyStats = false)),
-                ],
-              )
-            ],
+          Text('$accumulatedMinutes분 / $limitMinutes분', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          LinearProgressIndicator(
+            value: progress,
+            backgroundColor: Colors.white24,
+            color: progress >= 1.0 ? Colors.redAccent : AppTheme.pastelGreen,
+            minHeight: 12,
+            borderRadius: BorderRadius.circular(8),
           ),
           const SizedBox(height: 16),
-          // ✨ 전체 박스 높이를 140으로 넉넉하게 늘려서 안정성 확보
-          SizedBox(
-            height: 140,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: List.generate(xLabels.length, (index) {
-                bool isLast = index == xLabels.length - 1;
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Container(
-                      width: 20,
-                      height: dummyHeights[index],
-                      decoration: BoxDecoration(
-                        color: isLast ? AppTheme.yellowColor : AppTheme.pastelGreen,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(xLabels[index], style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                  ],
-                );
-              }),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
-            children: [
-              _buildStatBadge('완료한 동화: 2권', AppTheme.pastelGreen),
-              _buildStatBadge('시작한 동화: 5권', AppTheme.pastelBlue),
-            ],
+          Text(
+            progress >= 1.0 ? '일일 사용 한도를 초과했습니다.' : '오늘도 꾸준히 학습 중이에요!',
+            style: TextStyle(color: progress >= 1.0 ? Colors.redAccent : Colors.white70),
           )
         ],
       ),
     );
   }
 
-  // 커스텀 탭 버튼 위젯
-  Widget _buildTabButton(String title, bool isSelected, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? AppTheme.pastelGreen.withOpacity(0.2) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: isSelected ? AppTheme.pastelGreen : Colors.white24),
-        ),
-        child: Text(
-            title,
-            style: TextStyle(
-                color: isSelected ? AppTheme.pastelGreen : Colors.white54,
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
-            )
+  Widget _buildSummaryCard(ParentDashboardProvider provider) {
+    final summary = provider.dashboardSummary;
+    return _buildDashboardCard(
+      title: '📖 학습 데이터 요약 (PD02)',
+      child: Padding(
+        padding: const EdgeInsets.only(top: 16.0),
+        child: Wrap( // ✨ Row 대신 Wrap을 써서 공간이 부족하면 아래로 줄바꿈되도록 처리
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: [
+            _buildStatBadge('완성한 동화: ${summary?.storyCount ?? 0}권', AppTheme.pastelBlue),
+            _buildStatBadge('수집한 단어: ${summary?.vocabularyCount ?? 0}개', AppTheme.pastelGreen),
+            _buildStatBadge('퀴즈 시도: ${summary?.quizStats.totalAttempts ?? 0}회', AppTheme.yellowColor),
+          ],
         ),
       ),
     );
@@ -288,51 +286,9 @@ class _ParentScreenState extends State<ParentScreen> {
 
   Widget _buildStatBadge(String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(color: color.withOpacity(0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: color)),
-      child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 13)),
-    );
-  }
-
-// [오른쪽 아래] 최근 열람 동화 로그 (PD05 반영: 좌우 스크롤 및 상세 일시 표시)
-  Widget _buildLogCard() {
-    return _buildDashboardCard(
-      title: '📖 최근 자녀 열람 동화 로그',
-      child: Padding(
-        padding: const EdgeInsets.only(top: 16.0),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal, // ✨ 좌우 스크롤 기능 추가!
-          child: Row(
-            children: [
-              _buildBookCover('슈퍼 스페이스', '2026.09.15 14:30', AppTheme.pastelBlue),
-              const SizedBox(width: 20),
-              _buildBookCover('용의 동굴 (완료)', '2026.09.14 20:00', AppTheme.pastelGreen),
-              const SizedBox(width: 20),
-              _buildBookCover('마법의 숲', '2026.09.12 16:15', AppTheme.pastelPink),
-              const SizedBox(width: 20),
-              _buildBookCover('바다 탐험', '2026.09.10 09:20', AppTheme.yellowColor),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBookCover(String title, String datetime, Color color) {
-    return Column(
-      children: [
-        Container(
-          width: 80, height: 110,
-          decoration: BoxDecoration(color: color.withOpacity(0.8), borderRadius: BorderRadius.circular(12)),
-          child: const Center(child: Icon(Icons.menu_book, color: AppTheme.navyColor, size: 36)),
-        ),
-        const SizedBox(height: 12),
-        Text(title, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text(datetime, style: const TextStyle(color: Colors.white54, fontSize: 11)), // ✨ 열람 일시 추가
-      ],
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: color)),
+      child: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 14)),
     );
   }
 }
-
-
