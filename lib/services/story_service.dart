@@ -16,8 +16,7 @@ class StoryGenerationFailedException extends ApiException {
 /// 동화 생성·조회·삭제·즐겨찾기. (P-SG01~05, P-LB01~05)
 ///
 /// 계약은 Hanium-back `story.router.js`·`storyLibrary.*`·`storyFavorite.controller.js`
-/// 기준. 그림체(imageStyle)·키워드 필드는 아직 백엔드에 없어(카톡으로 별도 협의,
-/// back#40 6번) 요청에 넣지 않는다.
+/// 기준.
 class StoryService {
   final ApiClient _apiClient;
   final Duration _pollInterval;
@@ -34,6 +33,9 @@ class StoryService {
   ///
   /// 응답을 못 받은 요청을 재시도해도 중복 생성되지 않도록 같은 [requestId]를 보낸다.
   /// 백엔드가 실패 상태로 확정한 작업은 새 요청 ID로 다시 시작해야 한다.
+  ///
+  /// [imageStyle](그림체 칩 라벨, 서버 50자↓)·[keyword](상세 이야기, 서버 500자↓)는
+  /// 선택값이라 공백뿐이면 보내지 않는다(back#40 6번).
   Future<StoryDetail> createStory({
     required int childProfileId,
     required int characterId,
@@ -41,7 +43,11 @@ class StoryService {
     required String mainEvent,
     required String requestId,
     int? childAge,
+    String? imageStyle,
+    String? keyword,
   }) async {
+    final style = imageStyle?.trim() ?? '';
+    final detail = keyword?.trim() ?? '';
     var job = await _call(
       () => _apiClient.dio.post<Map<String, dynamic>>(
         '/stories',
@@ -51,6 +57,8 @@ class StoryService {
           'background': background,
           'mainEvent': mainEvent,
           if (childAge != null) 'childAge': childAge,
+          if (style.isNotEmpty) 'imageStyle': style,
+          if (detail.isNotEmpty) 'keyword': detail,
         },
         options: Options(headers: {'Idempotency-Key': requestId}),
       ),

@@ -179,6 +179,41 @@ void main() {
     );
   });
 
+  test('createStory는 그림체·키워드를 다듬어 보내고 공백이면 생략한다', () async {
+    final bodies = <Map<String, dynamic>>[];
+    handler = (request) async {
+      bodies.add(
+        jsonDecode(await utf8.decoder.bind(request).join())
+            as Map<String, dynamic>,
+      );
+      await respond(request, 202, {
+        'success': true,
+        'data': {'jobId': 7, 'status': 'failed', 'errorMessage': '중단'},
+      });
+    };
+
+    Future<void> create({String? imageStyle, String? keyword}) => expectLater(
+      storyService.createStory(
+        childProfileId: 3,
+        characterId: 9,
+        background: '신비로운 숲',
+        mainEvent: '숨겨진 보물 찾기',
+        requestId: 'request-style',
+        imageStyle: imageStyle,
+        keyword: keyword,
+      ),
+      throwsA(isA<StoryGenerationFailedException>()),
+    );
+
+    await create(imageStyle: '수채화풍', keyword: '  공룡과 친구가 되는 이야기  ');
+    await create(imageStyle: '', keyword: '   ');
+
+    expect(bodies[0]['imageStyle'], '수채화풍');
+    expect(bodies[0]['keyword'], '공룡과 친구가 되는 이야기');
+    expect(bodies[1].containsKey('imageStyle'), isFalse);
+    expect(bodies[1].containsKey('keyword'), isFalse);
+  });
+
   test('상태 조회가 실패한 뒤 같은 키로 재시도하면 기존 작업을 이어받는다', () async {
     final requestIds = <String?>[];
     var statusCalls = 0;

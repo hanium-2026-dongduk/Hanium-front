@@ -43,6 +43,8 @@ void main() {
         'background': '신비로운 숲',
         'mainEvent': '숨겨진 보물 찾기',
         'childAge': 7,
+        'imageStyle': null,
+        'keyword': null,
       });
 
       provider.dispose();
