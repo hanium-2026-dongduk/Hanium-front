@@ -50,6 +50,27 @@ void main() {
       provider.dispose();
     });
 
+    test('그림체·키워드를 생성 요청에 함께 넘긴다', () async {
+      final provider = StoryResultProvider(
+        storyService: service,
+        childProfileId: 3,
+        payload: StoryCreatePayload(
+          characterId: 9,
+          location: '숲',
+          event: '탐험',
+          imageStyle: '수채화풍',
+          keyword: '공룡과 친구가 되는 이야기',
+        ),
+      );
+
+      await provider.load();
+
+      expect(service.lastCreateArgs?['imageStyle'], '수채화풍');
+      expect(service.lastCreateArgs?['keyword'], '공룡과 친구가 되는 이야기');
+
+      provider.dispose();
+    });
+
     test('캐릭터 id가 없으면 API를 부르지 않고 안내 메시지를 남긴다', () async {
       final provider = StoryResultProvider(
         storyService: service,

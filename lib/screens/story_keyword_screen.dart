@@ -74,11 +74,6 @@ class _StoryKeywordScreenState extends State<StoryKeywordScreen> {
                   '팁: "공룡과 친구가 되는 이야기"처럼 짧게 써도 좋아요!',
                   style: TextStyle(color: Colors.white54, fontSize: 12),
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  '🚧 지금은 배경·사건만 동화에 반영돼요. 자세한 이야기 반영은 곧 추가될 예정이에요.',
-                  style: TextStyle(color: Colors.white38, fontSize: 12),
-                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _keywordController,
