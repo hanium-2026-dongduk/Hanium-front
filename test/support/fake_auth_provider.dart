@@ -34,6 +34,8 @@ class FakeAuthProvider extends ChangeNotifier implements AuthProvider {
   final List<String> sendPasswordResetCodeCalls = [];
   final List<(String email, String code, String newPassword)>
   resetPasswordCalls = [];
+  final List<(String currentPassword, String newPassword)> changePasswordCalls =
+      [];
   int logoutCalls = 0;
 
   /// 각 동작이 성공했다고 할지. 실패 흐름을 볼 때 false로 바꾼다.
@@ -43,6 +45,7 @@ class FakeAuthProvider extends ChangeNotifier implements AuthProvider {
   bool verifySignupCodeResult = true;
   bool sendPasswordResetCodeResult = true;
   bool resetPasswordResult = true;
+  bool changePasswordResult = true;
 
   @override
   Future<bool> login({required String email, required String password}) async {
@@ -88,6 +91,15 @@ class FakeAuthProvider extends ChangeNotifier implements AuthProvider {
   }) async {
     resetPasswordCalls.add((email, code, newPassword));
     return resetPasswordResult;
+  }
+
+  @override
+  Future<bool> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    changePasswordCalls.add((currentPassword, newPassword));
+    return changePasswordResult;
   }
 
   @override
