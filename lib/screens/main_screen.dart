@@ -8,6 +8,7 @@ import 'package:hanium_front/screens/reward_history_screen.dart';
 import 'package:hanium_front/providers/active_child_provider.dart';
 import 'package:hanium_front/providers/main_dashboard_provider.dart';
 import 'package:hanium_front/providers/reward_provider.dart';
+import 'package:hanium_front/screens/auth/profile_list_screen.dart';
 import 'package:hanium_front/screens/library_screen.dart';
 import 'package:hanium_front/screens/mypage/my_page_screen.dart';
 import 'package:hanium_front/screens/story_creation_screen.dart';
@@ -63,6 +64,18 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  /// 다른 자녀를 고르면 ActiveChildProvider가 바뀌어 didChangeDependencies에서
+  /// 대시보드·포인트를 새 자녀 기준으로 다시 불러온다. 고르지 않고 돌아오면
+  /// 그대로 둔다.
+  Future<void> _openProfileSwitch() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ProfileListScreen(isSwitching: true),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _dashboard.dispose();
@@ -87,6 +100,12 @@ class _MainScreenState extends State<MainScreen> {
         ),
         actions: [
           // 아동 UX 기준(48dp) 터치 영역을 맞춘다.
+          IconButton(
+            tooltip: '프로필 바꾸기',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            icon: const Icon(Icons.switch_account, color: Colors.white),
+            onPressed: _openProfileSwitch,
+          ),
           IconButton(
             tooltip: '마이페이지',
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
