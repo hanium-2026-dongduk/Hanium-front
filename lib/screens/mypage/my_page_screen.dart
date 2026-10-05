@@ -9,6 +9,8 @@ import '../../widgets/async_state_view.dart';
 import 'learning_stats_screen.dart';
 import 'received_stickers_screen.dart';
 import 'reward_status_screen.dart';
+import 'package:hanium_front/screens/auth/guardian_auth_screen.dart';
+
 
 /// 마이페이지 허브. 자녀 프로필(표시 전용)과 보상·학습·스티커 메뉴. (P-MY-MP01)
 ///
@@ -44,6 +46,22 @@ class MyPageScreen extends StatelessWidget {
                 children: [
                   _ProfileCard(child: child, guardianEmail: email),
                   const SizedBox(height: 24),
+
+                  // 보호자 모드 진입 버튼 추가
+                  _MenuTile(
+                    icon: Icons.admin_panel_settings,
+                    label: '보호자 모드',
+                    onTap: () {
+                      // 새롭게 만들 PIN 인증 화면으로 이동
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const GuardianAuthScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
                   _MenuTile(
                     icon: Icons.emoji_events,
                     label: '보상 현황',
