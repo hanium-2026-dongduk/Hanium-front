@@ -3,14 +3,13 @@ import 'package:provider/provider.dart';
 
 import '../../models/attendance_month.dart';
 import '../../models/dashboard_summary.dart';
+import '../../models/usage_summary.dart';
 import '../../providers/active_child_provider.dart';
 import '../../providers/learning_stats_provider.dart';
 import '../../theme/theme.dart';
 import '../../widgets/async_state_view.dart';
 
-/// 마이페이지 > 학습 통계. 이번 달 출석과 퀴즈 결과. (P-MY-MP03)
-///
-/// 읽은 동화 수·학습 시간은 서버 집계(BE-C)가 준비되면 채운다.
+/// 마이페이지 > 학습 통계. 이번 달 출석, 읽은 동화 수·최근 7일 학습 시간, 퀴즈 결과. (P-MY-MP03)
 class LearningStatsScreen extends StatefulWidget {
   const LearningStatsScreen({super.key});
 
@@ -41,7 +40,8 @@ class _LearningStatsScreenState extends State<LearningStatsScreen> {
     final isCurrent = provider.loadedChildId == _childProfileId;
     final attendance = isCurrent ? provider.attendance : null;
     final summary = isCurrent ? provider.summary : null;
-    final hasData = attendance != null && summary != null;
+    final usage = isCurrent ? provider.usage : null;
+    final hasData = attendance != null && summary != null && usage != null;
 
     return Scaffold(
       backgroundColor: AppTheme.navyColor,
@@ -61,9 +61,11 @@ class _LearningStatsScreenState extends State<LearningStatsScreen> {
                 onRefresh: _load,
                 child: AsyncStateView(
                   isLoading: (provider.isLoading || !isCurrent) && !hasData,
-                  errorMessage: hasData || !isCurrent ? null : provider.errorMessage,
+                  errorMessage: hasData || !isCurrent
+                      ? null
+                      : provider.errorMessage,
                   onRetry: _load,
-                  isEmpty: hasData && _isEmpty(attendance, summary),
+                  isEmpty: hasData && _isEmpty(attendance, summary, usage),
                   emptyMessage: '아직 학습 기록이 없어요.\n오늘 출석하고 시작해 봐요!',
                   contentBuilder: (_) => ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
@@ -72,11 +74,12 @@ class _LearningStatsScreenState extends State<LearningStatsScreen> {
                       if (hasData) ...[
                         _AttendanceSection(month: attendance),
                         const SizedBox(height: 24),
-                        _QuizSection(stats: summary.quizStats),
+                        _ReadingSection(
+                          readStoryCount: summary.readStoryCount,
+                          usage: usage,
+                        ),
                         const SizedBox(height: 24),
-                        const _ComingSoonCard(icon: Icons.menu_book, label: '읽은 동화'),
-                        const SizedBox(height: 12),
-                        const _ComingSoonCard(icon: Icons.timer, label: '학습 시간'),
+                        _QuizSection(stats: summary.quizStats),
                       ],
                     ],
                   ),
@@ -86,8 +89,15 @@ class _LearningStatsScreenState extends State<LearningStatsScreen> {
     );
   }
 
-  bool _isEmpty(AttendanceMonth attendance, DashboardSummary summary) =>
-      attendance.attendedCount == 0 && summary.quizStats.totalAttempts == 0;
+  bool _isEmpty(
+    AttendanceMonth attendance,
+    DashboardSummary summary,
+    UsageSummary usage,
+  ) =>
+      attendance.attendedCount == 0 &&
+      summary.readStoryCount == 0 &&
+      usage.totalAccumulatedSeconds == 0 &&
+      summary.quizStats.totalAttempts == 0;
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -137,7 +147,10 @@ class _StatBox extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 4),
-            Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+            ),
           ],
         ),
       ),
@@ -160,13 +173,52 @@ class _AttendanceSection extends StatelessWidget {
           children: [
             _StatBox(value: '${month.attendedCount}일', label: '출석 일수'),
             const SizedBox(width: 12),
-            _StatBox(value: '${month.attendanceRate.toStringAsFixed(1)}%', label: '출석률'),
+            _StatBox(
+              value: '${month.attendanceRate.toStringAsFixed(1)}%',
+              label: '출석률',
+            ),
             const SizedBox(width: 12),
             _StatBox(value: '${month.currentStreak}일', label: '연속 출석'),
           ],
         ),
       ],
     );
+  }
+}
+
+class _ReadingSection extends StatelessWidget {
+  final int readStoryCount;
+  final UsageSummary usage;
+
+  const _ReadingSection({required this.readStoryCount, required this.usage});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionTitle('동화와 학습 시간'),
+        Row(
+          children: [
+            _StatBox(value: '$readStoryCount권', label: '읽은 동화'),
+            const SizedBox(width: 12),
+            _StatBox(
+              value: _formatDuration(usage.totalAccumulatedSeconds),
+              label: '최근 7일 학습',
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// 분 단위로 내림해 보여준다. 1분이 안 되면 0분.
+  String _formatDuration(int seconds) {
+    final minutes = seconds ~/ 60;
+    final hours = minutes ~/ 60;
+    final rest = minutes % 60;
+    if (hours == 0) return '$rest분';
+    return rest == 0 ? '$hours시간' : '$hours시간 $rest분';
   }
 }
 
@@ -184,48 +236,26 @@ class _QuizSection extends StatelessWidget {
       children: [
         const _SectionTitle('퀴즈'),
         if (stats.totalAttempts == 0)
-          const Text('아직 푼 퀴즈가 없어요.', style: TextStyle(color: Colors.white70, fontSize: 15))
+          const Text(
+            '아직 푼 퀴즈가 없어요.',
+            style: TextStyle(color: Colors.white70, fontSize: 15),
+          )
         else
           Row(
             children: [
               _StatBox(value: '${stats.totalAttempts}번', label: '퀴즈 응시'),
               const SizedBox(width: 12),
-              _StatBox(value: average == null ? '-' : '${_formatScore(average)}점', label: '평균 점수'),
+              _StatBox(
+                value: average == null ? '-' : '${_formatScore(average)}점',
+                label: '평균 점수',
+              ),
             ],
           ),
       ],
     );
   }
 
-  String _formatScore(double score) =>
-      score == score.roundToDouble() ? score.toStringAsFixed(0) : score.toStringAsFixed(1);
-}
-
-class _ComingSoonCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _ComingSoonCard({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 64),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white24, size: 28),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(label, style: const TextStyle(color: Colors.white38, fontSize: 16)),
-          ),
-          const Text('곧 만나요', style: TextStyle(color: Colors.white38, fontSize: 14)),
-        ],
-      ),
-    );
-  }
+  String _formatScore(double score) => score == score.roundToDouble()
+      ? score.toStringAsFixed(0)
+      : score.toStringAsFixed(1);
 }

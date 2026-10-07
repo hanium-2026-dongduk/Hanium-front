@@ -3,28 +3,37 @@ import 'package:flutter/foundation.dart';
 import '../core/api_exception.dart';
 import '../models/attendance_month.dart';
 import '../models/dashboard_summary.dart';
+import '../models/usage_summary.dart';
 import '../services/attendance_service.dart';
 import '../services/dashboard_service.dart';
+import '../services/usage_service.dart';
 
-/// 학습 통계 화면(MP03)의 이번 달 출석과 대시보드 집계를 한 번에 불러오는 Provider.
+/// 학습 통계 화면(MP03)의 이번 달 출석·대시보드 집계·최근 7일 학습 시간을 한 번에 불러오는 Provider.
 class LearningStatsProvider extends ChangeNotifier {
   final AttendanceService _attendanceService;
   final DashboardService _dashboardService;
+  final UsageService _usageService;
 
   LearningStatsProvider({
     required AttendanceService attendanceService,
     required DashboardService dashboardService,
+    required UsageService usageService,
   }) : _attendanceService = attendanceService,
-       _dashboardService = dashboardService;
+       _dashboardService = dashboardService,
+       _usageService = usageService;
 
   AttendanceMonth? _attendance;
   DashboardSummary? _summary;
+  UsageSummary? _usage;
   int? _loadedChildId;
   bool _isLoading = false;
   String? _errorMessage;
 
   AttendanceMonth? get attendance => _attendance;
   DashboardSummary? get summary => _summary;
+
+  /// 오늘 포함 최근 7일 학습 시간.
+  UsageSummary? get usage => _usage;
 
   /// 지금 들고 있는 값이 어느 자녀의 것인지. 화면은 자기 자녀와 다르면 값을 쓰지 않는다.
   int? get loadedChildId => _loadedChildId;
@@ -39,6 +48,7 @@ class LearningStatsProvider extends ChangeNotifier {
     if (_loadedChildId != childProfileId) {
       _attendance = null;
       _summary = null;
+      _usage = null;
       _loadedChildId = childProfileId;
     }
     _isLoading = true;
@@ -49,11 +59,13 @@ class LearningStatsProvider extends ChangeNotifier {
       final results = await Future.wait([
         _attendanceService.fetchMonthly(childProfileId),
         _dashboardService.fetchSummary(childProfileId),
+        _usageService.fetchSummary(childProfileId),
       ]);
       // 기다리는 사이 다른 자녀로 바뀌었다면 이 결과는 버린다.
       if (_loadedChildId != childProfileId) return;
       _attendance = results[0] as AttendanceMonth;
       _summary = results[1] as DashboardSummary;
+      _usage = results[2] as UsageSummary;
     } on ApiException catch (error) {
       if (_loadedChildId == childProfileId) _errorMessage = error.message;
     } finally {

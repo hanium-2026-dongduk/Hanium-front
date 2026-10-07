@@ -7,15 +7,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hanium_front/core/api_client.dart';
 import 'package:hanium_front/core/api_exception.dart';
 import 'package:hanium_front/core/token_storage.dart';
-import 'package:hanium_front/services/dashboard_service.dart';
+import 'package:hanium_front/services/usage_service.dart';
 import 'package:mocktail/mocktail.dart';
 
 class _MockSecureStorage extends Mock implements FlutterSecureStorage {}
 
-/// 학습 대시보드 요약 조회(MP03)가 서버 계약대로 요청하고 응답을 읽는지 본다.
+/// 학습 시간 요약 조회(MP03)가 서버 계약대로 요청하고 응답을 읽는지 본다.
 void main() {
   late HttpServer server;
-  late DashboardService dashboardService;
+  late UsageService usageService;
   late Future<void> Function(HttpRequest request) handler;
 
   setUp(() async {
@@ -45,7 +45,7 @@ void main() {
       () => storage.delete(key: any(named: 'key')),
     ).thenAnswer((call) async => tokens.remove(call.namedArguments[#key]));
 
-    dashboardService = DashboardService(
+    usageService = UsageService(
       ApiClient(tokenStorage: TokenStorage(storage: storage)),
     );
     server.listen((request) async => handler(request));
@@ -67,82 +67,78 @@ void main() {
     await request.response.close();
   }
 
-  test('자녀 id로 대시보드 경로를 부르고 집계를 읽는다', () async {
-    String? path;
-    String? auth;
+  test('자녀 id로 사용 시간 요약 경로를 부르고 기간 합계와 일별 기록을 읽는다', () async {
+    Uri? uri;
     handler = (request) async {
-      path = request.uri.path;
-      auth = request.headers.value('authorization');
+      uri = request.uri;
       await respond(request, 200, {
         'success': true,
-        'message': '대시보드를 조회했습니다.',
+        'message': '기간별 사용 시간을 조회했습니다.',
         'data': {
-          'storyCount': 12,
-          'favoriteStoryCount': 3,
-          'readStoryCount': 8,
-          'vocabularyCount': 40,
-          'quizStats': {
-            'totalAttempts': 5,
-            'averageScore': 82.5,
-            'lastAttemptAt': '2026-09-20T05:00:00.000Z',
-          },
+          'from': '2026-09-28',
+          'to': '2026-10-04',
+          'totalAccumulatedSeconds': 5400,
+          'days': [
+            {'date': '2026-09-30', 'accumulatedSeconds': 1800},
+            {'date': '2026-10-04', 'accumulatedSeconds': '3600'},
+          ],
         },
       });
     };
 
-    final summary = await dashboardService.fetchSummary(7);
+    final summary = await usageService.fetchSummary(7);
 
-    expect(path, '/api/dashboard/7');
-    expect(auth, 'Bearer access-token');
-    expect(summary.storyCount, 12);
-    expect(summary.favoriteStoryCount, 3);
-    expect(summary.readStoryCount, 8);
-    expect(summary.vocabularyCount, 40);
-    expect(summary.quizStats.totalAttempts, 5);
-    expect(summary.quizStats.averageScore, 82.5);
-    expect(summary.quizStats.lastAttemptAt, isNotNull);
+    expect(uri!.path, '/api/usage/7/summary');
+    // 기간을 안 주면 서버 기본값(최근 7일)을 쓰도록 쿼리를 붙이지 않는다.
+    expect(uri!.queryParameters, isEmpty);
+    expect(summary.from, '2026-09-28');
+    expect(summary.to, '2026-10-04');
+    expect(summary.totalAccumulatedSeconds, 5400);
+    expect(summary.days, hasLength(2));
+    expect(summary.days.last.accumulatedSeconds, 3600);
   });
 
-  test('퀴즈 기록이 없으면 평균 점수는 null이다', () async {
+  test('기간을 주면 from·to 쿼리로 보낸다', () async {
+    Uri? uri;
     handler = (request) async {
+      uri = request.uri;
       await respond(request, 200, {
         'success': true,
         'message': 'ok',
         'data': {
-          'storyCount': 0,
-          'favoriteStoryCount': 0,
-          'vocabularyCount': 0,
-          'quizStats': {
-            'totalAttempts': 0,
-            'averageScore': null,
-            'lastAttemptAt': null,
-          },
+          'from': '2026-09-01',
+          'to': '2026-09-30',
+          'totalAccumulatedSeconds': 0,
+          'days': [],
         },
       });
     };
 
-    final summary = await dashboardService.fetchSummary(7);
+    final summary = await usageService.fetchSummary(
+      7,
+      from: '2026-09-01',
+      to: '2026-09-30',
+    );
 
-    expect(summary.readStoryCount, 0); // 필드가 없던 이전 서버 응답도 0으로 읽는다.
-    expect(summary.quizStats.totalAttempts, 0);
-    expect(summary.quizStats.averageScore, isNull);
-    expect(summary.quizStats.lastAttemptAt, isNull);
+    expect(uri!.queryParameters, {'from': '2026-09-01', 'to': '2026-09-30'});
+    expect(summary.totalAccumulatedSeconds, 0);
+    expect(summary.days, isEmpty);
   });
 
   test('서버 오류면 서버 메시지를 담은 ApiException을 던진다', () async {
     handler = (request) async {
-      await respond(request, 500, {
+      await respond(request, 404, {
         'success': false,
-        'message': '잠시 후 다시 시도해 주세요.',
+        'message': '자녀 프로필을 찾을 수 없습니다.',
       });
     };
 
     expect(
-      () => dashboardService.fetchSummary(7),
+      () => usageService.fetchSummary(7),
       throwsA(
         isA<ApiException>()
-            .having((e) => e.statusCode, 'statusCode', 500)
-            .having((e) => e.message, 'message', '잠시 후 다시 시도해 주세요.'),
+            .having((e) => e.statusCode, 'statusCode', 404)
+            .having((e) => e.message, 'message', '자녀 프로필을 찾을 수 없습니다.'),
       ),
     );
   });

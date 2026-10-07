@@ -8,7 +8,6 @@ import 'providers/active_child_provider.dart';
 import 'providers/attendance_provider.dart';
 import 'providers/parent_dashboard_provider.dart';
 import 'providers/auth_provider.dart';
-import 'services/usage_service.dart';
 import 'providers/learning_stats_provider.dart';
 import 'providers/received_sticker_provider.dart';
 import 'providers/reward_provider.dart';
@@ -27,6 +26,7 @@ import 'services/sticker_service.dart';
 import 'services/character_service.dart';
 import 'services/story_service.dart';
 import 'services/tts_service.dart';
+import 'services/usage_service.dart';
 import 'services/vocabulary_service.dart';
 import 'theme/theme.dart';
 import 'screens/tutorial_screen.dart';
@@ -143,6 +143,7 @@ class _MyAppState extends State<MyApp> {
           ),
         ),
         Provider<DashboardService>(create: (_) => DashboardService(_apiClient)),
+        Provider<UsageService>(create: (_) => UsageService(_apiClient)),
         Provider<StickerService>(create: (_) => StickerService(_apiClient)),
         // 퀴즈(QZ01~03). QuizProvider는 앱 전역이 아니라 퀴즈 화면이 열릴 때마다 만든다.
         Provider<GuardianService>(create: (_) => GuardianService(_apiClient)),
@@ -157,6 +158,7 @@ class _MyAppState extends State<MyApp> {
           create: (context) => LearningStatsProvider(
             attendanceService: context.read<AttendanceService>(),
             dashboardService: context.read<DashboardService>(),
+            usageService: context.read<UsageService>(),
           ),
         ),
         ChangeNotifierProvider<ReceivedStickerProvider>(

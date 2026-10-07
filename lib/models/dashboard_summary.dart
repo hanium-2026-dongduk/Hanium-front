@@ -8,12 +8,18 @@ class QuizStats {
   final double? averageScore;
   final DateTime? lastAttemptAt;
 
-  const QuizStats({required this.totalAttempts, this.averageScore, this.lastAttemptAt});
+  const QuizStats({
+    required this.totalAttempts,
+    this.averageScore,
+    this.lastAttemptAt,
+  });
 
   factory QuizStats.fromJson(Map<String, dynamic> json) => QuizStats(
     totalAttempts: parseId(json['totalAttempts']),
     averageScore: (json['averageScore'] as num?)?.toDouble(),
-    lastAttemptAt: DateTime.tryParse(json['lastAttemptAt'] as String? ?? '')?.toLocal(),
+    lastAttemptAt: DateTime.tryParse(
+      json['lastAttemptAt'] as String? ?? '',
+    )?.toLocal(),
   );
 }
 
@@ -21,22 +27,30 @@ class QuizStats {
 class DashboardSummary {
   final int storyCount;
   final int favoriteStoryCount;
+
+  /// 지금까지 한 번이라도 열어 본 동화 수. 같은 동화를 여러 번 읽어도 1로 센다.
+  final int readStoryCount;
   final int vocabularyCount;
   final QuizStats quizStats;
 
   const DashboardSummary({
     required this.storyCount,
     required this.favoriteStoryCount,
+    this.readStoryCount = 0,
     required this.vocabularyCount,
     required this.quizStats,
   });
 
-  factory DashboardSummary.fromJson(Map<String, dynamic> json) => DashboardSummary(
-    storyCount: parseId(json['storyCount']),
-    favoriteStoryCount: parseId(json['favoriteStoryCount']),
-    vocabularyCount: parseId(json['vocabularyCount']),
-    quizStats: json['quizStats'] is Map
-        ? QuizStats.fromJson(Map<String, dynamic>.from(json['quizStats'] as Map))
-        : const QuizStats(totalAttempts: 0),
-  );
+  factory DashboardSummary.fromJson(Map<String, dynamic> json) =>
+      DashboardSummary(
+        storyCount: parseId(json['storyCount']),
+        favoriteStoryCount: parseId(json['favoriteStoryCount']),
+        readStoryCount: parseId(json['readStoryCount']),
+        vocabularyCount: parseId(json['vocabularyCount']),
+        quizStats: json['quizStats'] is Map
+            ? QuizStats.fromJson(
+                Map<String, dynamic>.from(json['quizStats'] as Map),
+              )
+            : const QuizStats(totalAttempts: 0),
+      );
 }
