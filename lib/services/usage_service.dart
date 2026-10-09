@@ -30,6 +30,21 @@ class UsageService {
     }
   }
 
+  /// POST /api/usage/heartbeat → 지금까지의 사용 시간을 서버에 누적
+  ///
+  /// 서버가 직전 heartbeat와의 간격(1회 최대 90초)을 직접 계산하므로 시간 값은 보내지 않는다.
+  /// 보호자가 정한 하루 한도를 넘으면 403 [ApiException]을 던진다.
+  Future<void> sendHeartbeat(int childProfileId) async {
+    try {
+      await _apiClient.dio.post<Map<String, dynamic>>(
+        '/usage/heartbeat',
+        data: {'child_profile_id': childProfileId},
+      );
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
+  }
+
   Future<Map<String, dynamic>> getTodayUsage(int childId) async {
     final response = await _apiClient.dio.get('/api/usage/$childId/today');
     return response.data['data'];
