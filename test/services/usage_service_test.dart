@@ -125,6 +125,48 @@ void main() {
     expect(summary.days, isEmpty);
   });
 
+  test('heartbeat는 자녀 id만 담아 POST로 보낸다', () async {
+    String? method;
+    Uri? uri;
+    Object? body;
+    handler = (request) async {
+      method = request.method;
+      uri = request.uri;
+      body = jsonDecode(await utf8.decodeStream(request));
+      await respond(request, 200, {
+        'success': true,
+        'message': '사용 시간이 기록되었습니다.',
+        'data': {
+          'accumulatedSeconds': 30,
+          'limitSeconds': null,
+          'remainingSeconds': null,
+        },
+      });
+    };
+
+    await usageService.sendHeartbeat(7);
+
+    expect(method, 'POST');
+    expect(uri!.path, '/api/usage/heartbeat');
+    expect(body, {'child_profile_id': 7});
+  });
+
+  test('heartbeat 한도 초과(403)는 ApiException으로 던진다', () async {
+    handler = (request) async {
+      await respond(request, 403, {
+        'success': false,
+        'message': '오늘의 사용 시간이 초과되었습니다.',
+      });
+    };
+
+    expect(
+      () => usageService.sendHeartbeat(7),
+      throwsA(
+        isA<ApiException>().having((e) => e.statusCode, 'statusCode', 403),
+      ),
+    );
+  });
+
   test('서버 오류면 서버 메시지를 담은 ApiException을 던진다', () async {
     handler = (request) async {
       await respond(request, 404, {
