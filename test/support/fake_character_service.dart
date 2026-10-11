@@ -8,6 +8,10 @@ class FakeCharacterService implements CharacterService {
   int createCalls = 0;
   Character? lastCreated;
 
+  /// 마지막 호출에 넘어온 자녀 프로필 ID. Provider가 ID를 제대로 전달하는지 확인할 때 쓴다.
+  int? lastFetchChildProfileId;
+  int? lastCreateChildProfileId;
+
   ApiException? fetchError;
   ApiException? createError;
 
@@ -24,14 +28,16 @@ class FakeCharacterService implements CharacterService {
   int _nextId = 100;
 
   @override
-  Future<List<Character>> fetchCharacters() async {
+  Future<List<Character>> fetchCharacters(int childProfileId) async {
     fetchCalls++;
+    lastFetchChildProfileId = childProfileId;
     if (fetchError != null) throw fetchError!;
     return characters;
   }
 
   @override
   Future<Character> createCharacter({
+    required int childProfileId,
     required String name,
     String personality = '밝음',
     String description = '',
@@ -39,6 +45,7 @@ class FakeCharacterService implements CharacterService {
     String type = CharacterType.custom,
   }) async {
     createCalls++;
+    lastCreateChildProfileId = childProfileId;
     if (createError != null) throw createError!;
     final character = Character(
       characterId: _nextId++,

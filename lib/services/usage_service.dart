@@ -45,8 +45,13 @@ class UsageService {
     }
   }
 
+  /// GET /api/usage/:childId/today → 오늘 누적 사용 시간·하루 한도 (보호자 대시보드)
   Future<Map<String, dynamic>> getTodayUsage(int childId) async {
-    final response = await _apiClient.dio.get('/api/usage/$childId/today');
-    return response.data['data'];
+    try {
+      final response = await _apiClient.dio.get('/usage/$childId/today');
+      return response.data['data'];
+    } on DioException catch (error) {
+      throw ApiException.fromDio(error);
+    }
   }
 }

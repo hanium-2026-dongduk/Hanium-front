@@ -241,7 +241,7 @@ class _ParentScreenState extends State<ParentScreen> {
     final double progress = limitSeconds > 0 ? (accumulatedSeconds / limitSeconds).clamp(0.0, 1.0) : 0;
 
     return _buildDashboardCard(
-      title: '🕒 오늘 사용 시간 (PD02)',
+      title: '🕒 오늘 사용 시간',
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -267,7 +267,7 @@ class _ParentScreenState extends State<ParentScreen> {
   Widget _buildSummaryCard(ParentDashboardProvider provider) {
     final summary = provider.dashboardSummary;
     return _buildDashboardCard(
-      title: '📖 학습 데이터 요약 (PD02)',
+      title: '📖 학습 데이터 요약',
       child: Padding(
         padding: const EdgeInsets.only(top: 16.0),
         child: Wrap( // ✨ Row 대신 Wrap을 써서 공간이 부족하면 아래로 줄바꿈되도록 처리

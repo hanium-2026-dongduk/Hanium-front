@@ -164,7 +164,19 @@ class _MyAppState extends State<MyApp> {
         Provider<StickerService>(create: (_) => StickerService(_apiClient)),
         // 퀴즈(QZ01~03). QuizProvider는 앱 전역이 아니라 퀴즈 화면이 열릴 때마다 만든다.
         Provider<GuardianService>(create: (_) => GuardianService(_apiClient)),
-        ChangeNotifierProvider<GuardianProvider>(create: (_) => GuardianProvider()),
+        ChangeNotifierProvider<GuardianProvider>(
+          create: (_) => GuardianProvider(),
+        ),
+        // UsageService는 위에서 .value로 이미 등록했으므로 여기서는 다시 만들지 않는다.
+        ChangeNotifierProvider<ParentDashboardProvider>(
+          create: (context) => ParentDashboardProvider(
+            profileService: context.read<ProfileService>(),
+            dashboardService: context.read<DashboardService>(),
+            usageService: context.read<UsageService>(),
+            guardianService: context.read<GuardianService>(),
+            stickerService: context.read<StickerService>(),
+          ),
+        ),
         Provider<QuizService>(create: (_) => QuizService(_apiClient)),
         // 동화 생성·라이브러리(#39). CharacterProvider·StoryResultProvider·
         // LibraryProvider도 화면 단위라 앱 전역에는 Service만 등록한다.

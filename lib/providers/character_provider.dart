@@ -4,19 +4,17 @@ import '../core/api_exception.dart';
 import '../models/character.dart';
 import '../services/character_service.dart';
 
-/// 동화 생성 1단계(캐릭터 준비) 화면 전용. (P-SG01)
-///
-/// **화면 단위 Provider다.** `StoryCreationScreen`이 열릴 때마다 새로 만든다.
-/// 목록 조회와 새 캐릭터 생성을 함께 다룬다.
 class CharacterProvider extends ChangeNotifier {
   final CharacterService _characterService;
+  final int childProfileId; // ✨ 1. 필수 파라미터로 추가
 
-  CharacterProvider({required CharacterService characterService})
-    : _characterService = characterService;
+  CharacterProvider({
+    required CharacterService characterService,
+    required this.childProfileId, // ✨ 2. 생성자에서 받도록 수정
+  }) : _characterService = characterService;
 
   List<Character> _characters = const [];
 
-  // 화면이 열리자마자 목록을 불러오므로 첫 프레임부터 로딩으로 시작한다.
   bool _isLoading = true;
   String? _loadError;
   bool _isCreating = false;
@@ -30,15 +28,14 @@ class CharacterProvider extends ChangeNotifier {
   bool get isCreating => _isCreating;
   String? get createError => _createError;
 
-  /// GET /api/characters. 인증·소유권 구분이 없어 다른 사용자의 캐릭터도
-  /// 함께 내려올 수 있다(back#40 3번, 백엔드 보완 요청함).
   Future<void> load() async {
     _isLoading = true;
     _loadError = null;
     _safeNotify();
 
     try {
-      _characters = await _characterService.fetchCharacters();
+      // ✨ 3. 서비스 호출 시 childProfileId 넘겨주기
+      _characters = await _characterService.fetchCharacters(childProfileId);
     } on ApiException catch (error) {
       _loadError = error.message;
     } finally {
@@ -47,8 +44,6 @@ class CharacterProvider extends ChangeNotifier {
     }
   }
 
-  /// 새 캐릭터를 만들어 목록 맨 앞에 더한다. '직접 그리기'·'랜덤 생성'에서 쓴다.
-  /// (그림 캔버스·이미지 업로드 API가 없어 텍스트 정보만 보낸다.)
   Future<Character?> create({
     required String name,
     required String personality,
@@ -61,6 +56,7 @@ class CharacterProvider extends ChangeNotifier {
 
     try {
       final character = await _characterService.createCharacter(
+        childProfileId: childProfileId, // ✨ 4. 서비스 호출 시 childProfileId 넘겨주기
         name: name,
         personality: personality,
         description: description,

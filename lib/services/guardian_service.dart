@@ -7,15 +7,16 @@ class GuardianService {
   GuardianService(this._apiClient);
 
   // 1. 보호자 설정 조회 (PIN 설정 여부 등)
+  // 경로 앞의 /api는 ApiClient의 baseUrl에 이미 들어 있으므로 붙이지 않는다.
   Future<Map<String, dynamic>> getSettings() async {
-    final response = await _apiClient.dio.get('/api/guardian/settings');
+    final response = await _apiClient.dio.get('/guardian/settings');
     return response.data['data']['setting'];
   }
 
   // 2. [최초 설정] 비밀번호 확인 -> reauthToken 반환
   Future<String> verifyPassword(String password) async {
     final response = await _apiClient.dio.post(
-      '/api/guardian/reauth',
+      '/guardian/reauth',
       data: {'password': password},
     );
     return response.data['data']['reauthToken'];
@@ -33,7 +34,7 @@ class GuardianService {
     if (guardianToken != null) headers['X-Guardian-Token'] = guardianToken;
 
     await _apiClient.dio.put(
-      '/api/guardian/pin',
+      '/guardian/pin',
       data: {'pin': pin},
       options: Options(headers: headers),
     );
@@ -42,9 +43,27 @@ class GuardianService {
   // 4. [기존 PIN 있음] PIN 검증 -> guardianToken 반환
   Future<String> verifyPin(String pin) async {
     final response = await _apiClient.dio.post(
-      '/api/guardian/pin/verify',
+      '/guardian/pin/verify',
       data: {'pin': pin},
     );
     return response.data['data']['guardianToken'];
+  }
+
+  // 5. 보호자 설정 변경 (사용 시간, 푸시 알림)
+  Future<void> updateSettings({
+    required int limitMinutes,
+    required bool pushEnabled,
+    required String guardianToken,
+  }) async {
+    await _apiClient.dio.put(
+      '/guardian/settings',
+      data: {
+        'daily_usage_limit_minutes': limitMinutes,
+        'push_enabled': pushEnabled,
+      },
+      options: Options(
+        headers: {'X-Guardian-Token': guardianToken}, // 보호자 전용 요청 헤더 필수
+      ),
+    );
   }
 }
