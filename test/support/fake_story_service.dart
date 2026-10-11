@@ -55,6 +55,8 @@ class FakeStoryService implements StoryService {
     required String mainEvent,
     required String requestId,
     int? childAge,
+    String? imageStyle,
+    String? keyword,
   }) async {
     createCalls++;
     lastRequestId = requestId;
@@ -65,6 +67,8 @@ class FakeStoryService implements StoryService {
       'background': background,
       'mainEvent': mainEvent,
       'childAge': childAge,
+      'imageStyle': imageStyle,
+      'keyword': keyword,
     };
     if (createError != null) throw createError!;
     return storyToReturn;

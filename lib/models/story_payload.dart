@@ -12,18 +12,22 @@ class StoryCreatePayload {
     String background,
     String mainEvent,
     int childAge,
+    String imageStyle,
+    String keyword,
   })?
   _generationInput;
   String? _generationRequestId;
 
   /// 같은 입력으로 화면에서 다시 시도하면 서버의 같은 작업을 조회한다.
-  /// 사용자가 뒤로 가서 입력을 바꾸면 새 키로 새 동화를 만든다.
+  /// 사용자가 뒤로 가서 입력(그림체·키워드 포함)을 바꾸면 새 키로 새 동화를 만든다.
   String generationRequestIdFor({
     required int childProfileId,
     required int characterId,
     required String background,
     required String mainEvent,
     int? childAge,
+    String? imageStyle,
+    String? keyword,
   }) {
     final input = (
       childProfileId: childProfileId,
@@ -31,6 +35,8 @@ class StoryCreatePayload {
       background: background,
       mainEvent: mainEvent,
       childAge: childAge ?? 6,
+      imageStyle: imageStyle?.trim() ?? '',
+      keyword: keyword?.trim() ?? '',
     );
     if (_generationInput != input || _generationRequestId == null) {
       _generationInput = input;
@@ -64,8 +70,7 @@ class StoryCreatePayload {
   String? characterPersonality;
   String? characterDescription;
 
-  /// 그림체. 카카오톡으로 백엔드와 이미 협의되어 필드가 추가될 예정이라
-  /// UI는 유지하되 값은 아직 서버에 보내지 않는다(back#40 참고).
+  /// 그림체 칩 라벨(예: `수채화풍`). 서버가 라벨을 삽화 프롬프트 힌트로 바꾼다(back#40 6번).
   String? imageStyle;
 
   // 2단계: 배경/사건. 백엔드가 프리셋 id 대신 자유 텍스트도 받아서
@@ -73,8 +78,7 @@ class StoryCreatePayload {
   String? location;
   String? event;
 
-  /// 상세 키워드. 그림체와 마찬가지로 백엔드 필드가 아직 없어 서버에는 보내지
-  /// 않고, 준비되면 이어서 반영한다.
+  /// 3단계 상세 이야기(한 단어가 아니라 짧은 문장). 서버가 본문 프롬프트에 반영한다.
   String? keyword;
 
   StoryCreatePayload({
