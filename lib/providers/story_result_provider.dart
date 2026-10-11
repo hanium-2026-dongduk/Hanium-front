@@ -86,12 +86,16 @@ class StoryResultProvider extends ChangeNotifier {
           background: p.location ?? '',
           mainEvent: p.event ?? '',
           childAge: childAge,
+          imageStyle: p.imageStyle,
+          keyword: p.keyword,
           requestId: p.generationRequestIdFor(
             childProfileId: childProfileId,
             characterId: characterId,
             background: p.location ?? '',
             mainEvent: p.event ?? '',
             childAge: childAge,
+            imageStyle: p.imageStyle,
+            keyword: p.keyword,
           ),
         );
         _story = created;

@@ -20,9 +20,14 @@ void main() {
 
   setUp(() async {
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    dotenv.loadFromString(envString: 'API_BASE_URL=http://127.0.0.1:${server.port}/api');
+    dotenv.loadFromString(
+      envString: 'API_BASE_URL=http://127.0.0.1:${server.port}/api',
+    );
 
-    final tokens = {'access_token': 'access-token', 'refresh_token': 'refresh-token'};
+    final tokens = {
+      'access_token': 'access-token',
+      'refresh_token': 'refresh-token',
+    };
     final storage = _MockSecureStorage();
     when(
       () => storage.read(key: any(named: 'key')),
@@ -33,13 +38,16 @@ void main() {
         value: any(named: 'value'),
       ),
     ).thenAnswer((call) async {
-      tokens[call.namedArguments[#key] as String] = call.namedArguments[#value] as String;
+      tokens[call.namedArguments[#key] as String] =
+          call.namedArguments[#value] as String;
     });
     when(
       () => storage.delete(key: any(named: 'key')),
     ).thenAnswer((call) async => tokens.remove(call.namedArguments[#key]));
 
-    dashboardService = DashboardService(ApiClient(tokenStorage: TokenStorage(storage: storage)));
+    dashboardService = DashboardService(
+      ApiClient(tokenStorage: TokenStorage(storage: storage)),
+    );
     server.listen((request) async => handler(request));
   });
 
@@ -48,7 +56,11 @@ void main() {
     dotenv.clean();
   });
 
-  Future<void> respond(HttpRequest request, int statusCode, Map<String, dynamic> body) async {
+  Future<void> respond(
+    HttpRequest request,
+    int statusCode,
+    Map<String, dynamic> body,
+  ) async {
     request.response.statusCode = statusCode;
     request.response.headers.contentType = ContentType.json;
     request.response.write(jsonEncode(body));
@@ -67,6 +79,7 @@ void main() {
         'data': {
           'storyCount': 12,
           'favoriteStoryCount': 3,
+          'readStoryCount': 8,
           'vocabularyCount': 40,
           'quizStats': {
             'totalAttempts': 5,
@@ -83,6 +96,7 @@ void main() {
     expect(auth, 'Bearer access-token');
     expect(summary.storyCount, 12);
     expect(summary.favoriteStoryCount, 3);
+    expect(summary.readStoryCount, 8);
     expect(summary.vocabularyCount, 40);
     expect(summary.quizStats.totalAttempts, 5);
     expect(summary.quizStats.averageScore, 82.5);
@@ -98,13 +112,18 @@ void main() {
           'storyCount': 0,
           'favoriteStoryCount': 0,
           'vocabularyCount': 0,
-          'quizStats': {'totalAttempts': 0, 'averageScore': null, 'lastAttemptAt': null},
+          'quizStats': {
+            'totalAttempts': 0,
+            'averageScore': null,
+            'lastAttemptAt': null,
+          },
         },
       });
     };
 
     final summary = await dashboardService.fetchSummary(7);
 
+    expect(summary.readStoryCount, 0); // 필드가 없던 이전 서버 응답도 0으로 읽는다.
     expect(summary.quizStats.totalAttempts, 0);
     expect(summary.quizStats.averageScore, isNull);
     expect(summary.quizStats.lastAttemptAt, isNull);
@@ -112,7 +131,10 @@ void main() {
 
   test('서버 오류면 서버 메시지를 담은 ApiException을 던진다', () async {
     handler = (request) async {
-      await respond(request, 500, {'success': false, 'message': '잠시 후 다시 시도해 주세요.'});
+      await respond(request, 500, {
+        'success': false,
+        'message': '잠시 후 다시 시도해 주세요.',
+      });
     };
 
     expect(

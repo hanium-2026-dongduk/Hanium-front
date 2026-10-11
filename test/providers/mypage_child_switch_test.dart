@@ -8,6 +8,7 @@ import 'package:hanium_front/models/dashboard_summary.dart';
 import 'package:hanium_front/models/page_result.dart';
 import 'package:hanium_front/models/received_sticker.dart';
 import 'package:hanium_front/models/reward_detail.dart';
+import 'package:hanium_front/models/usage_summary.dart';
 import 'package:hanium_front/providers/learning_stats_provider.dart';
 import 'package:hanium_front/providers/received_sticker_provider.dart';
 import 'package:hanium_front/providers/reward_status_provider.dart';
@@ -16,6 +17,7 @@ import 'package:hanium_front/services/badge_service.dart';
 import 'package:hanium_front/services/dashboard_service.dart';
 import 'package:hanium_front/services/reward_service.dart';
 import 'package:hanium_front/services/sticker_service.dart';
+import 'package:hanium_front/services/usage_service.dart';
 
 /// 마이페이지 Provider는 앱 전역에서 하나를 공유하므로, 자녀가 바뀌면
 /// 이전 자녀의 데이터가 남아 보이지 않아야 한다. (자녀 학습·보상 데이터 분리)
@@ -54,11 +56,28 @@ class _FakeAttendanceService implements AttendanceService {
 
 class _FakeDashboardService implements DashboardService {
   @override
-  Future<DashboardSummary> fetchSummary(int childProfileId) async => DashboardSummary(
-    storyCount: childProfileId,
-    favoriteStoryCount: 0,
-    vocabularyCount: 0,
-    quizStats: const QuizStats(totalAttempts: 0),
+  Future<DashboardSummary> fetchSummary(int childProfileId) async =>
+      DashboardSummary(
+        storyCount: childProfileId,
+        favoriteStoryCount: 0,
+        vocabularyCount: 0,
+        quizStats: const QuizStats(totalAttempts: 0),
+      );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeUsageService implements UsageService {
+  @override
+  Future<UsageSummary> fetchSummary(
+    int childProfileId, {
+    String? from,
+    String? to,
+  }) async => UsageSummary(
+    from: '',
+    to: '',
+    totalAccumulatedSeconds: childProfileId * 60,
   );
 
   @override
@@ -74,15 +93,20 @@ class _FakeStickerService implements StickerService {
     int page = 1,
     int limit = 20,
   }) {
-    return (pending[childProfileId] = Completer<PageResult<ReceivedSticker>>()).future;
+    return (pending[childProfileId] = Completer<PageResult<ReceivedSticker>>())
+        .future;
   }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-RewardDetail _detail(int childId, int points) =>
-    RewardDetail(childProfileId: childId, points: points, level: 1, streakDays: 0);
+RewardDetail _detail(int childId, int points) => RewardDetail(
+  childProfileId: childId,
+  points: points,
+  level: 1,
+  streakDays: 0,
+);
 
 AttendanceMonth _month(int childId, int attended) => AttendanceMonth(
   childProfileId: childId,
@@ -95,7 +119,9 @@ AttendanceMonth _month(int childId, int attended) => AttendanceMonth(
 );
 
 PageResult<ReceivedSticker> _stickers(String name) => PageResult(
-  items: [ReceivedSticker(stickerSendId: 1, stickerCode: 'well_done', name: name)],
+  items: [
+    ReceivedSticker(stickerSendId: 1, stickerCode: 'well_done', name: name),
+  ],
   page: 1,
   limit: 20,
   totalCount: 1,
@@ -109,7 +135,10 @@ void main() {
 
     setUp(() {
       service = _FakeRewardService();
-      provider = RewardStatusProvider(rewardService: service, badgeService: _FakeBadgeService());
+      provider = RewardStatusProvider(
+        rewardService: service,
+        badgeService: _FakeBadgeService(),
+      );
     });
 
     test('자녀가 바뀌면 이전 자녀의 값을 비우고 새로 불러온다', () async {
@@ -133,7 +162,9 @@ void main() {
       await first;
 
       final second = provider.load(2);
-      service.pending[2]!.completeError(const ApiException(message: '서버에 연결할 수 없어요.'));
+      service.pending[2]!.completeError(
+        const ApiException(message: '서버에 연결할 수 없어요.'),
+      );
       await second;
 
       expect(provider.detail, isNull);
@@ -160,6 +191,7 @@ void main() {
       final provider = LearningStatsProvider(
         attendanceService: attendance,
         dashboardService: _FakeDashboardService(),
+        usageService: _FakeUsageService(),
       );
 
       final first = provider.load(1);
@@ -168,16 +200,19 @@ void main() {
       await first;
       expect(provider.attendance?.attendedCount, 5);
       expect(provider.summary?.storyCount, 1);
+      expect(provider.usage?.totalAccumulatedSeconds, 60);
 
       final second = provider.load(2);
       expect(provider.attendance, isNull);
       expect(provider.summary, isNull);
+      expect(provider.usage, isNull);
 
       await Future<void>.delayed(Duration.zero);
       attendance.pending[2]!.complete(_month(2, 9));
       await second;
       expect(provider.attendance?.attendedCount, 9);
       expect(provider.summary?.storyCount, 2);
+      expect(provider.usage?.totalAccumulatedSeconds, 120);
     });
   });
 
@@ -210,7 +245,9 @@ void main() {
       await first;
 
       final second = provider.load(2);
-      service.pending[2]!.completeError(const ApiException(message: '서버에 연결할 수 없어요.'));
+      service.pending[2]!.completeError(
+        const ApiException(message: '서버에 연결할 수 없어요.'),
+      );
       await second;
 
       expect(provider.stickers, isEmpty);

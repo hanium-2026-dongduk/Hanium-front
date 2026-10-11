@@ -7,6 +7,7 @@ class GuardianService {
   GuardianService(this._apiClient);
 
   // 1. 보호자 설정 조회 (PIN 설정 여부 등)
+  // 경로 앞의 /api는 ApiClient의 baseUrl에 이미 들어 있으므로 붙이지 않는다.
   Future<Map<String, dynamic>> getSettings() async {
     final response = await _apiClient.dio.get('/guardian/settings');
     return response.data['data']['setting'];
