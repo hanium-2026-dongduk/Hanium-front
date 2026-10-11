@@ -13,6 +13,7 @@ import 'providers/received_sticker_provider.dart';
 import 'providers/reward_provider.dart';
 import 'providers/reward_status_provider.dart';
 import 'providers/guardian_provider.dart';
+import 'providers/usage_heartbeat_provider.dart';
 import 'screens/auth_gate.dart';
 import 'services/attendance_service.dart';
 import 'services/auth_service.dart';
@@ -68,6 +69,8 @@ class _MyAppState extends State<MyApp> {
   late final ActiveChildProvider _activeChildProvider;
   late final RewardProvider _rewardProvider;
   late final TtsService _ttsService;
+  late final UsageService _usageService;
+  late final UsageHeartbeatProvider _usageHeartbeatProvider;
 
   @override
   void initState() {
@@ -88,6 +91,15 @@ class _MyAppState extends State<MyApp> {
     _activeChildProvider = ActiveChildProvider(profileService: _profileService);
     _rewardProvider = RewardProvider(rewardService: _rewardService);
     _ttsService = TtsService();
+    _usageService = UsageService(_apiClient);
+    // 로그인·활성 자녀·앱 상태를 보고 학습 시간 heartbeat를 알아서 보내고 멈춘다.
+    _usageHeartbeatProvider = UsageHeartbeatProvider(
+      usageService: _usageService,
+      authProvider: _authProvider,
+      activeChildProvider: _activeChildProvider,
+      lifecycleState: WidgetsBinding.instance.lifecycleState,
+    );
+    WidgetsBinding.instance.addObserver(_usageHeartbeatProvider);
 
     // 토큰 갱신까지 실패하면 AuthProvider가 로그인 화면으로 되돌린다.
     // 서로를 참조해야 해서 생성자 대신 여기서 연결한다.
@@ -99,6 +111,8 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(_usageHeartbeatProvider);
+    _usageHeartbeatProvider.dispose();
     _authProvider.dispose();
     _activeChildProvider.dispose();
     _rewardProvider.dispose();
@@ -143,7 +157,10 @@ class _MyAppState extends State<MyApp> {
           ),
         ),
         Provider<DashboardService>(create: (_) => DashboardService(_apiClient)),
-        Provider<UsageService>(create: (_) => UsageService(_apiClient)),
+        Provider<UsageService>.value(value: _usageService),
+        ChangeNotifierProvider<UsageHeartbeatProvider>.value(
+          value: _usageHeartbeatProvider,
+        ),
         Provider<StickerService>(create: (_) => StickerService(_apiClient)),
         // 퀴즈(QZ01~03). QuizProvider는 앱 전역이 아니라 퀴즈 화면이 열릴 때마다 만든다.
         Provider<GuardianService>(create: (_) => GuardianService(_apiClient)),
