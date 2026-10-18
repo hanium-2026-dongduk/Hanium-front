@@ -35,13 +35,15 @@ class WordSaveProvider extends ChangeNotifier {
   Future<void>? _savedWordsLoading;
   bool _disposed = false;
 
-  /// 누른 토큰을 비교용 키로 바꾼다. 서버 뜻 조회와 같은 규칙으로 앞뒤 문장부호를 떼고
-  /// 둥근 따옴표를 통일한 뒤 소문자로 만든다(`"Apple,"` → `apple`). 글자가 없으면 빈 문자열.
-  static String normalize(String token) => token
+  /// 누른 토큰에서 서버 뜻 조회와 같은 규칙으로 앞뒤 문장부호를 떼고 둥근 따옴표를
+  /// 통일한다(`"Apple,"` → `Apple`). 글자가 없으면 빈 문자열이다. 화면 표시용.
+  static String clean(String token) => token
       .trim()
       .replaceAll(RegExp('[‘’]'), "'")
-      .replaceAll(RegExp(r'^[^A-Za-z]+|[^A-Za-z]+$'), '')
-      .toLowerCase();
+      .replaceAll(RegExp(r'^[^A-Za-z]+|[^A-Za-z]+$'), '');
+
+  /// 비교용 키. [clean]한 뒤 소문자로 만든다(`"Apple,"` → `apple`).
+  static String normalize(String token) => clean(token).toLowerCase();
 
   WordMeaning? meaningOf(String word) => _meanings[word];
   bool isLookingUp(String word) => _lookingUp.contains(word);
