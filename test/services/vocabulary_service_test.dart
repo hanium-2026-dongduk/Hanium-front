@@ -22,15 +22,30 @@ void main() {
 
   setUp(() async {
     server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    dotenv.loadFromString(envString: 'API_BASE_URL=http://127.0.0.1:${server.port}/api');
+    dotenv.loadFromString(
+      envString: 'API_BASE_URL=http://127.0.0.1:${server.port}/api',
+    );
 
-    final tokens = {'access_token': 'access-token', 'refresh_token': 'refresh-token'};
+    final tokens = {
+      'access_token': 'access-token',
+      'refresh_token': 'refresh-token',
+    };
     final storage = _MockSecureStorage();
-    when(() => storage.read(key: any(named: 'key'))).thenAnswer((call) async => tokens[call.namedArguments[#key]]);
-    when(() => storage.write(key: any(named: 'key'), value: any(named: 'value'))).thenAnswer((call) async {
-      tokens[call.namedArguments[#key] as String] = call.namedArguments[#value] as String;
+    when(
+      () => storage.read(key: any(named: 'key')),
+    ).thenAnswer((call) async => tokens[call.namedArguments[#key]]);
+    when(
+      () => storage.write(
+        key: any(named: 'key'),
+        value: any(named: 'value'),
+      ),
+    ).thenAnswer((call) async {
+      tokens[call.namedArguments[#key] as String] =
+          call.namedArguments[#value] as String;
     });
-    when(() => storage.delete(key: any(named: 'key'))).thenAnswer((call) async => tokens.remove(call.namedArguments[#key]));
+    when(
+      () => storage.delete(key: any(named: 'key')),
+    ).thenAnswer((call) async => tokens.remove(call.namedArguments[#key]));
 
     apiClient = ApiClient(tokenStorage: TokenStorage(storage: storage));
     vocabularyService = VocabularyService(apiClient);
@@ -42,41 +57,93 @@ void main() {
     dotenv.clean();
   });
 
-  Future<void> respond(HttpRequest request, int statusCode, Map<String, dynamic> body) async {
+  Future<void> respond(
+    HttpRequest request,
+    int statusCode,
+    Map<String, dynamic> body,
+  ) async {
     request.response.statusCode = statusCode;
     request.response.headers.contentType = ContentType.json;
     request.response.write(jsonEncode(body));
     await request.response.close();
   }
 
-  test('목록 조회는 child_profile_id/page/limit을 쿼리로 보내고 items·pagination을 읽는다', () async {
+  test(
+    '목록 조회는 child_profile_id/page/limit을 쿼리로 보내고 items·pagination을 읽는다',
+    () async {
+      Uri? uri;
+      handler = (request) async {
+        uri = request.uri;
+        await respond(request, 200, {
+          'success': true,
+          'data': {
+            'items': [
+              {
+                'vocabulary_entry_id': 10,
+                'child_profile_id': 3,
+                'english_word': 'castle',
+                'korean_meaning': '성, 대저택',
+                'is_favorite': false,
+                'created_at': '2026-08-12T01:23:45.000Z',
+              },
+            ],
+            'pagination': {
+              'page': 1,
+              'limit': 20,
+              'totalCount': 1,
+              'totalPages': 1,
+            },
+          },
+        });
+      };
+
+      final result = await vocabularyService.fetchEntries(
+        3,
+        page: 1,
+        limit: 20,
+      );
+
+      expect(uri?.path, '/api/vocabulary');
+      expect(uri?.queryParameters, {
+        'child_profile_id': '3',
+        'page': '1',
+        'limit': '20',
+      });
+      expect(result.items.single.englishWord, 'castle');
+      expect(result.totalCount, 1);
+    },
+  );
+
+  test('뜻 조회는 word를 쿼리로 보내고 english_word·korean_meaning을 읽는다', () async {
     Uri? uri;
     handler = (request) async {
       uri = request.uri;
       await respond(request, 200, {
         'success': true,
-        'data': {
-          'items': [
-            {
-              'vocabulary_entry_id': 10,
-              'child_profile_id': 3,
-              'english_word': 'castle',
-              'korean_meaning': '성, 대저택',
-              'is_favorite': false,
-              'created_at': '2026-08-12T01:23:45.000Z',
-            },
-          ],
-          'pagination': {'page': 1, 'limit': 20, 'totalCount': 1, 'totalPages': 1},
-        },
+        'data': {'english_word': 'apple', 'korean_meaning': '사과'},
       });
     };
 
-    final result = await vocabularyService.fetchEntries(3, page: 1, limit: 20);
+    final meaning = await vocabularyService.lookupMeaning('apple,');
 
-    expect(uri?.path, '/api/vocabulary');
-    expect(uri?.queryParameters, {'child_profile_id': '3', 'page': '1', 'limit': '20'});
-    expect(result.items.single.englishWord, 'castle');
-    expect(result.totalCount, 1);
+    expect(uri?.path, '/api/vocabulary/lookup');
+    expect(uri?.queryParameters, {'word': 'apple,'});
+    expect(meaning.englishWord, 'apple');
+    expect(meaning.koreanMeaning, '사과');
+  });
+
+  test('뜻을 모르는 단어면 404를 ApiException으로 전한다', () async {
+    handler = (request) async {
+      await respond(request, 404, {
+        'success': false,
+        'message': '단어 뜻을 찾을 수 없습니다.',
+      });
+    };
+
+    await expectLater(
+      vocabularyService.lookupMeaning('zzzz'),
+      throwsA(isA<ApiException>().having((e) => e.statusCode, '상태 코드', 404)),
+    );
   });
 
   test('저장은 필수 필드와 선택 필드를 함께 보내고 entry를 읽는다', () async {
@@ -135,7 +202,11 @@ void main() {
       });
     };
 
-    await vocabularyService.saveEntry(childProfileId: 3, englishWord: 'magic', koreanMeaning: '마법');
+    await vocabularyService.saveEntry(
+      childProfileId: 3,
+      englishWord: 'magic',
+      koreanMeaning: '마법',
+    );
 
     expect(sentBody?.keys, isNot(contains('story_id')));
     expect(sentBody?.keys, isNot(contains('example_sentence')));
@@ -161,7 +232,10 @@ void main() {
 
   test('소유하지 않은 단어를 삭제하면 404를 ApiException으로 전한다', () async {
     handler = (request) async {
-      await respond(request, 404, {'success': false, 'message': '단어를 찾을 수 없습니다.'});
+      await respond(request, 404, {
+        'success': false,
+        'message': '단어를 찾을 수 없습니다.',
+      });
     };
 
     await expectLater(
