@@ -35,7 +35,8 @@ class FakeParentDashboardProvider extends ChangeNotifier implements ParentDashbo
   @override List<ChildProfile> get children => _testChildren;
   @override ChildProfile? get selectedChild => _testChildren.isNotEmpty ? _testChildren.first : null;
 
-  @override Map<String, dynamic>? get usageData => null;
+  Map<String, dynamic>? testUsageData;
+  @override Map<String, dynamic>? get usageData => testUsageData;
   @override DashboardSummary? get dashboardSummary => null;
   @override List<dynamic> get stickers => [];
 
@@ -116,6 +117,24 @@ void main() {
       // 핵심 UI 카드들이 렌더링되었는지 확인
       expect(find.text('자녀 프로필 정보'), findsOneWidget);
       expect(find.text('칭찬 스티커 발송'), findsOneWidget);
+    });
+  
+    testWidgets('5. 사용 시간: 한도 없이 오늘 누적 시간만 시간·분으로 보여준다', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1200, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      // 실서버는 한도를 정하지 않으면 limitSeconds를 null로 준다.
+      fakeProvider
+        ..testUsageData = {'accumulatedSeconds': 25034, 'limitSeconds': null}
+        ..setStatus(hasChild: true);
+
+      await tester.pumpWidget(createTestWidget());
+      await tester.pumpAndSettle();
+
+      expect(find.text('6시간 57분'), findsOneWidget);
+      expect(find.textContaining('60분'), findsNothing);
+      expect(find.text('일일 사용 한도를 초과했습니다.'), findsNothing);
     });
   });
 }

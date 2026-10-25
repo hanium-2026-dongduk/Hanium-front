@@ -234,34 +234,31 @@ class _ParentScreenState extends State<ParentScreen> {
   }
 
   Widget _buildUsageStatsCard(ParentDashboardProvider provider) {
-    final accumulatedSeconds = provider.usageData?['accumulatedSeconds'] ?? 0;
-    final limitSeconds = provider.usageData?['limitSeconds'] ?? 3600;
-    final accumulatedMinutes = accumulatedSeconds ~/ 60;
-    final limitMinutes = limitSeconds ~/ 60;
-    final double progress = limitSeconds > 0 ? (accumulatedSeconds / limitSeconds).clamp(0.0, 1.0) : 0;
+    // 사용 시간 제한(PD03)은 MVP에서 빠져 서버도 한도를 null로 준다. 그래서 한도·진행률 없이 누적 시간만 보여 준다.
+    final accumulatedSeconds = (provider.usageData?['accumulatedSeconds'] as num?)?.toInt() ?? 0;
 
     return _buildDashboardCard(
       title: '🕒 오늘 사용 시간',
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('$accumulatedMinutes분 / $limitMinutes분', style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          LinearProgressIndicator(
-            value: progress,
-            backgroundColor: Colors.white24,
-            color: progress >= 1.0 ? Colors.redAccent : AppTheme.pastelGreen,
-            minHeight: 12,
-            borderRadius: BorderRadius.circular(8),
-          ),
+          Text(_formatUsage(accumulatedSeconds), style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Text(
-            progress >= 1.0 ? '일일 사용 한도를 초과했습니다.' : '오늘도 꾸준히 학습 중이에요!',
-            style: TextStyle(color: progress >= 1.0 ? Colors.redAccent : Colors.white70),
-          )
+            accumulatedSeconds < 60 ? '아직 오늘 학습 기록이 없어요.' : '오늘도 꾸준히 학습 중이에요!',
+            style: const TextStyle(color: Colors.white70),
+          ),
         ],
       ),
     );
+  }
+
+  /// 417분처럼 큰 값은 읽기 어려워 1시간이 넘으면 `6시간 57분`으로 보여 준다.
+  String _formatUsage(int seconds) {
+    final minutes = seconds ~/ 60;
+    if (minutes < 60) return '$minutes분';
+    final rest = minutes % 60;
+    return rest == 0 ? '${minutes ~/ 60}시간' : '${minutes ~/ 60}시간 $rest분';
   }
 
   Widget _buildSummaryCard(ParentDashboardProvider provider) {
