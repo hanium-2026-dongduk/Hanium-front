@@ -100,7 +100,7 @@ class StorySummary {
       storyId: parseId(json['storyId']),
       title: json['title'] as String? ?? '',
       isFavorite: json['isFavorite'] == true,
-      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
+      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? '')?.toLocal(),
       coverImageUrl: json['coverImageUrl'] as String?, // ✨ JSON에서 값 읽어오기
     );
   }
