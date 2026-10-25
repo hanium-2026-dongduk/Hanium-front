@@ -194,15 +194,20 @@ class _StoryResultViewState extends State<_StoryResultView> {
     if (completed == true) setState(() => _isQuizDone = true);
   }
 
+  /// 실패했는데 "생성 완료!"가 뜨지 않도록 상태별로 제목을 나눈다.
+  String _appBarTitle(StoryResultProvider provider) {
+    if (provider.isLoading) return '만드는 중...';
+    if (provider.loadError != null) return '앗, 동화를 못 만들었어요';
+    return provider.story?.title ?? '생성 완료!';
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<StoryResultProvider>();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          provider.isLoading ? '만드는 중...' : (provider.story?.title ?? '생성 완료!'),
-        ),
+        title: Text(_appBarTitle(provider)),
         actions: [
           TextButton(
             onPressed: () =>

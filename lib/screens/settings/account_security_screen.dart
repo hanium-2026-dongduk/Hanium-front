@@ -34,8 +34,11 @@ class AccountSecurityScreen extends StatelessWidget {
     );
     if (confirmed != true || !context.mounted) return;
 
+    final navigator = Navigator.of(context);
     await context.read<AuthProvider>().logout();
-    // AuthGate가 로그인 화면으로 바꿔주므로 여기서 직접 이동하지 않는다.
+    // AuthGate는 가장 아래 화면만 로그인 화면으로 바꾼다. 이 화면은 그 위에 push된
+    // 라우트라 남아 있으므로, 첫 화면까지 닫아야 로그인 화면이 보인다.
+    navigator.popUntil((route) => route.isFirst);
   }
 
   @override
