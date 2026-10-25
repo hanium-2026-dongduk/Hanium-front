@@ -29,7 +29,11 @@ class FakeGuardianService implements GuardianService {
   }
 
   @override
-  Future<void> setupPin({required String pin, String? reauthToken, String? guardianToken}) async {
+  Future<void> setupPin({
+    required String pin,
+    String? reauthToken,
+    String? guardianToken,
+  }) async {
     // 성공했다고 가정
   }
 
@@ -39,20 +43,13 @@ class FakeGuardianService implements GuardianService {
     return "fake_guardian_token";
   }
 
-  // ✨ 에러의 원인! 새롭게 추가했던 함수를 Fake에도 껍데기만 만들어줌
-  @override
-  Future<void> updateSettings({
-    required int limitMinutes,
-    required bool pushEnabled,
-    required String guardianToken,
-  }) async {
-    // 테스트용이므로 아무 작업도 하지 않음
-  }
-
   void _throw429Error() {
     throw DioException(
       requestOptions: RequestOptions(path: ''),
-      response: Response(requestOptions: RequestOptions(path: ''), statusCode: 429),
+      response: Response(
+        requestOptions: RequestOptions(path: ''),
+        statusCode: 429,
+      ),
     );
   }
 }
@@ -99,15 +96,14 @@ void main() {
         Provider<GuardianService>.value(value: fakeService),
         ChangeNotifierProvider<GuardianProvider>.value(value: fakeProvider),
       ],
-      child: const MaterialApp(
-        home: GuardianAuthScreen(),
-      ),
+      child: const MaterialApp(home: GuardianAuthScreen()),
     );
   }
 
   group('GuardianAuthScreen 위젯 테스트', () {
-
-    testWidgets('has_pin이 true이면 PIN 입력 화면이 렌더링된다', (WidgetTester tester) async {
+    testWidgets('has_pin이 true이면 PIN 입력 화면이 렌더링된다', (
+      WidgetTester tester,
+    ) async {
       fakeService.hasPinToReturn = true;
 
       await tester.pumpWidget(createTestWidget());
@@ -116,7 +112,9 @@ void main() {
       expect(find.text('보호자 PIN 입력'), findsOneWidget);
     });
 
-    testWidgets('has_pin이 false이면 비밀번호 입력 화면이 렌더링된다', (WidgetTester tester) async {
+    testWidgets('has_pin이 false이면 비밀번호 입력 화면이 렌더링된다', (
+      WidgetTester tester,
+    ) async {
       fakeService.hasPinToReturn = false;
 
       await tester.pumpWidget(createTestWidget());
@@ -152,6 +150,5 @@ void main() {
 
       expect(find.text('연속 5회 실패하여 10분간 잠겼습니다.'), findsOneWidget);
     });
-
   });
 }
