@@ -16,14 +16,14 @@ const _randomCharacterPool = [
   (name: '초롱이', personality: '호기심 많고 씩씩해요', description: '별빛 망토를 두른 작은 여우예요.'),
   (name: '몽실이', personality: '다정하고 느긋해요', description: '구름처럼 폭신한 하얀 강아지예요.'),
   (
-  name: '반짝이',
-  personality: '용감하고 장난기 많아요',
-  description: '반짝이는 비늘을 가진 아기 용이에요.',
+    name: '반짝이',
+    personality: '용감하고 장난기 많아요',
+    description: '반짝이는 비늘을 가진 아기 용이에요.',
   ),
   (
-  name: '토실이',
-  personality: '겁이 많지만 마음이 따뜻해요',
-  description: '당근을 좋아하는 통통한 토끼예요.',
+    name: '토실이',
+    personality: '겁이 많지만 마음이 따뜻해요',
+    description: '당근을 좋아하는 통통한 토끼예요.',
   ),
 ];
 
@@ -35,7 +35,7 @@ class StoryCreationScreen extends StatelessWidget {
     // build()에서는 read 대신 select를 쓴다. read는 값이 바뀌어도 화면을 다시
     // 그리지 않아서, 자녀를 바꿔도 이전 자녀 기준 화면이 그대로 남는다.
     final childProfileId = context.select<ActiveChildProvider, int?>(
-          (provider) => provider.childProfileId,
+      (provider) => provider.childProfileId,
     );
 
     // 자녀가 선택되지 않은 상태로 들어왔다면 안내만 보여 준다.
@@ -102,7 +102,7 @@ class _StoryCreationViewState extends State<_StoryCreationView> {
 
   void _rollRandomCharacter() {
     final picked =
-    _randomCharacterPool[Random().nextInt(_randomCharacterPool.length)];
+        _randomCharacterPool[Random().nextInt(_randomCharacterPool.length)];
     _nameController.text = picked.name;
     _personalityController.text = picked.personality;
     _descriptionController.text = picked.description;
@@ -314,14 +314,14 @@ class _StoryCreationViewState extends State<_StoryCreationView> {
                     onPressed: _isSubmitting ? null : _handleNext,
                     child: _isSubmitting
                         ? const SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
                         : const Text(
-                      '다음 단계로 (스토리 배경 설정)',
-                      style: TextStyle(fontSize: 18),
-                    ),
+                            '다음 단계로 (스토리 배경 설정)',
+                            style: TextStyle(fontSize: 18),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 40),
@@ -410,7 +410,7 @@ class _StoryCreationViewState extends State<_StoryCreationView> {
                     _selectedCharacterId == character.characterId;
                 return GestureDetector(
                   onTap: () => setState(
-                        () => _selectedCharacterId = character.characterId,
+                    () => _selectedCharacterId = character.characterId,
                   ),
                   child: Container(
                     width: 120,
