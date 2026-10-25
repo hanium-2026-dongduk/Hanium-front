@@ -4,6 +4,7 @@ import 'package:hanium_front/core/api_exception.dart';
 import 'package:hanium_front/models/child_profile.dart';
 import 'package:hanium_front/models/page_result.dart';
 import 'package:hanium_front/models/vocabulary_entry.dart';
+import 'package:hanium_front/models/word_meaning.dart';
 import 'package:hanium_front/providers/active_child_provider.dart';
 import 'package:hanium_front/screens/voca_screen.dart';
 import 'package:hanium_front/services/profile_service.dart';
@@ -50,6 +51,9 @@ class _FakeVocabularyService implements VocabularyService {
     required String koreanMeaning,
     String? exampleSentence,
   }) => throw UnimplementedError();
+
+  @override
+  Future<WordMeaning> lookupMeaning(String word) => throw UnimplementedError();
 }
 
 VocabularyEntry _entry({

@@ -13,13 +13,15 @@ import 'package:hanium_front/services/quiz_service.dart';
 import 'package:hanium_front/services/reward_service.dart';
 import 'package:hanium_front/services/story_service.dart';
 import 'package:hanium_front/services/tts_service.dart';
+import 'package:hanium_front/services/vocabulary_service.dart';
 import 'package:provider/provider.dart';
 
 import '../support/fake_flutter_tts.dart';
 import '../support/fake_quiz_service.dart';
 import '../support/fake_story_service.dart';
+import '../support/fake_vocabulary_service.dart';
 
-/// 동화 결과 화면(생성/조회)에서 퀴즈로 이어지는 진입(QZ02)을 본다.
+/// 동화 결과 화면(생성/조회)에서 퀴즈로 이어지는 진입(QZ02)과 단어 뜻 보기·저장(VB01)을 본다.
 class _StubProfileService implements ProfileService {
   const _StubProfileService();
 
@@ -45,6 +47,7 @@ Future<FakeQuizService> _pumpResult(
   int? storyId,
   StoryCreatePayload? payload,
   FakeStoryService? storyService,
+  FakeVocabularyService? vocabularyService,
 }) async {
   // 화면 전체가 들어오도록 넉넉한 가로 화면으로 그린다.
   tester.view.physicalSize = const Size(1200, 1600);
@@ -78,6 +81,9 @@ Future<FakeQuizService> _pumpResult(
         ),
         Provider<QuizService>.value(value: quizService),
         Provider<StoryService>.value(value: storyService ?? FakeStoryService()),
+        Provider<VocabularyService>.value(
+          value: vocabularyService ?? FakeVocabularyService(),
+        ),
         Provider<TtsService>(
           create: (_) => TtsService(flutterTts: FakeFlutterTts()),
         ),
@@ -115,7 +121,9 @@ void main() {
   testWidgets('생성이 성공하면 페이지 내용이 보이고 퀴즈 풀기가 바로 활성화된다', (tester) async {
     await _pumpResult(tester);
 
-    expect(find.text('Once upon a time'), findsOneWidget);
+    // 단어마다 누를 수 있게 나눠 그린다.
+    expect(find.text('Once'), findsOneWidget);
+    expect(find.text('time'), findsOneWidget);
     final button = tester.widget<ButtonStyleButton>(
       find.widgetWithText(ElevatedButton, '퀴즈 풀기'),
     );
@@ -187,5 +195,58 @@ void main() {
     expect(button.onPressed, isNull);
     expect(quizService.submitCalls, 1);
     expect(quizService.generateCalls, 1);
+  });
+
+  testWidgets('단어를 누르면 뜻을 보여주고, 저장한 뒤에는 다시 저장할 수 없다', (tester) async {
+    final vocabulary = FakeVocabularyService();
+    await _pumpResult(tester, vocabularyService: vocabulary);
+
+    await tester.tap(find.text('Once'));
+    await tester.pumpAndSettle();
+
+    expect(vocabulary.lookupCalls, ['once']);
+    expect(find.text('한 번, 옛날에'), findsOneWidget);
+
+    await tester.tap(find.text('단어장에 저장'));
+    await tester.pumpAndSettle();
+
+    expect(vocabulary.saveCalls, hasLength(1));
+    expect(vocabulary.saveCalls.single.storyId, 42);
+    expect(vocabulary.saveCalls.single.englishWord, 'once');
+    final button = tester.widget<ButtonStyleButton>(
+      find.widgetWithText(ElevatedButton, '단어장에 저장했어요!'),
+    );
+    expect(button.onPressed, isNull);
+
+    await tester.tap(find.text('단어장에 저장했어요!'));
+    await tester.pumpAndSettle();
+    expect(vocabulary.saveCalls, hasLength(1));
+  });
+
+  testWidgets('단어장에 이미 있는 단어는 "이미 저장했어요"로 잠가 둔다', (tester) async {
+    final vocabulary = FakeVocabularyService(savedWords: ['ONCE']);
+    await _pumpResult(tester, vocabularyService: vocabulary);
+
+    await tester.tap(find.text('Once'));
+    await tester.pumpAndSettle();
+
+    final button = tester.widget<ButtonStyleButton>(
+      find.widgetWithText(ElevatedButton, '이미 저장했어요'),
+    );
+    expect(button.onPressed, isNull);
+    expect(vocabulary.saveCalls, isEmpty);
+  });
+
+  testWidgets('뜻을 모르는 단어는 안내 문구를 보여주고 저장 버튼을 잠근다', (tester) async {
+    await _pumpResult(tester);
+
+    await tester.tap(find.text('time'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('이 단어의 뜻은 아직 몰라요.'), findsOneWidget);
+    final button = tester.widget<ButtonStyleButton>(
+      find.widgetWithText(ElevatedButton, '단어장에 저장'),
+    );
+    expect(button.onPressed, isNull);
   });
 }

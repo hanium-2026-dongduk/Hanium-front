@@ -8,8 +8,10 @@ import 'package:hanium_front/core/api_config.dart';
 import 'package:hanium_front/models/story_payload.dart';
 import 'package:hanium_front/providers/active_child_provider.dart';
 import 'package:hanium_front/providers/story_result_provider.dart';
+import 'package:hanium_front/providers/word_save_provider.dart';
 import 'package:hanium_front/screens/quiz/quiz_screen.dart';
 import 'package:hanium_front/services/story_service.dart';
+import 'package:hanium_front/services/vocabulary_service.dart';
 import 'package:hanium_front/theme/theme.dart';
 import 'package:hanium_front/widgets/async_state_view.dart';
 
@@ -31,9 +33,9 @@ class StoryResultScreen extends StatelessWidget {
     this.storyId,
     this.initialIsFavorite = false,
   }) : assert(
-  payload != null || storyId != null,
-  'payload(생성) 또는 storyId(조회) 중 하나는 있어야 한다',
-  );
+         payload != null || storyId != null,
+         'payload(생성) 또는 storyId(조회) 중 하나는 있어야 한다',
+       );
 
   @override
   Widget build(BuildContext context) {
@@ -52,16 +54,27 @@ class StoryResultScreen extends StatelessWidget {
       );
     }
 
-    return ChangeNotifierProvider<StoryResultProvider>(
-      create: (context) => StoryResultProvider(
-        storyService: context.read<StoryService>(),
-        childProfileId: childProfileId,
-        payload: payload,
-        initialStoryId: storyId,
-        // 서버 프롬프트의 난이도·어휘 수준에 반영되므로 생성 모드에서 자녀 나이를 넘긴다.
-        childAge: activeChild.activeChild?.age,
-        initialIsFavorite: initialIsFavorite,
-      ),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<StoryResultProvider>(
+          create: (context) => StoryResultProvider(
+            storyService: context.read<StoryService>(),
+            childProfileId: childProfileId,
+            payload: payload,
+            initialStoryId: storyId,
+            // 서버 프롬프트의 난이도·어휘 수준에 반영되므로 생성 모드에서 자녀 나이를 넘긴다.
+            childAge: activeChild.activeChild?.age,
+            initialIsFavorite: initialIsFavorite,
+          ),
+        ),
+        // 단어를 처음 눌렀을 때 만들어진다.
+        ChangeNotifierProvider<WordSaveProvider>(
+          create: (context) => WordSaveProvider(
+            vocabularyService: context.read<VocabularyService>(),
+            childProfileId: childProfileId,
+          ),
+        ),
+      ],
       child: const _StoryResultView(),
     );
   }
@@ -148,6 +161,28 @@ class _StoryResultViewState extends State<_StoryResultView> {
     }
   }
 
+  /// 본문에서 누른 단어의 뜻을 아래에서 올라오는 시트로 보여준다. (P-ED-VB01)
+  void _openWord(String token) {
+    final word = WordSaveProvider.normalize(token);
+    if (word.isEmpty) return;
+    final wordSave = context.read<WordSaveProvider>();
+    unawaited(wordSave.lookup(word));
+    unawaited(wordSave.loadSavedWords());
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppTheme.navyColor,
+      builder: (_) => ChangeNotifierProvider<WordSaveProvider>.value(
+        value: wordSave,
+        child: _WordSheet(
+          word: word,
+          displayWord: WordSaveProvider.clean(token),
+          storyId: context.read<StoryResultProvider>().storyId,
+        ),
+      ),
+    );
+  }
+
   Future<void> _openQuiz(int storyId) async {
     if (_isQuizOpen || _isQuizDone) return;
     _isQuizOpen = true;
@@ -183,13 +218,13 @@ class _StoryResultViewState extends State<_StoryResultView> {
         child: provider.isLoading
             ? _StoryLoading(isCreating: provider.payload != null)
             : AsyncStateView(
-          isLoading: false,
-          errorMessage: provider.loadError,
-          onRetry: provider.load,
-          isEmpty: provider.story?.pages.isEmpty ?? false,
-          emptyMessage: '표시할 동화 내용이 없어요.',
-          contentBuilder: (context) => _buildContent(context, provider),
-        ),
+                isLoading: false,
+                errorMessage: provider.loadError,
+                onRetry: provider.load,
+                isEmpty: provider.story?.pages.isEmpty ?? false,
+                emptyMessage: '표시할 동화 내용이 없어요.',
+                contentBuilder: (context) => _buildContent(context, provider),
+              ),
       ),
     );
   }
@@ -220,32 +255,32 @@ class _StoryResultViewState extends State<_StoryResultView> {
                     borderRadius: BorderRadius.circular(20),
                     child: page.imageUrl != null
                         ? Image.network(
-                      ApiConfig.resolveMediaUrl(page.imageUrl!),
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: AppTheme.yellowColor,
-                          ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) =>
-                      const Center(
-                        child: Icon(
-                          Icons.image_not_supported,
-                          color: Colors.white38,
-                          size: 48,
-                        ),
-                      ),
-                    )
+                            ApiConfig.resolveMediaUrl(page.imageUrl!),
+                            fit: BoxFit.cover,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                child: CircularProgressIndicator(
+                                  color: AppTheme.yellowColor,
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Center(
+                                  child: Icon(
+                                    Icons.image_not_supported,
+                                    color: Colors.white38,
+                                    size: 48,
+                                  ),
+                                ),
+                          )
                         : const Center(
-                      child: Icon(
-                        Icons.auto_stories,
-                        color: Colors.white38,
-                        size: 48,
-                      ),
-                    ),
+                            child: Icon(
+                              Icons.auto_stories,
+                              color: Colors.white38,
+                              size: 48,
+                            ),
+                          ),
                   ),
                 ),
               ),
@@ -293,15 +328,15 @@ class _StoryResultViewState extends State<_StoryResultView> {
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(
-                        page.content,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          fontFamily: 'Quicksand',
-                        ),
+                      child: _TappableStoryText(
+                        content: page.content,
+                        onWordTap: _openWord,
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '모르는 단어를 눌러 보세요!',
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
                     ),
                     const SizedBox(height: 16),
                     Wrap(
@@ -361,7 +396,9 @@ class _StoryResultViewState extends State<_StoryResultView> {
                           child: ElevatedButton(
                             onPressed: null,
                             style: ElevatedButton.styleFrom(
-                              disabledBackgroundColor: Colors.white.withValues(alpha: 0.2),
+                              disabledBackgroundColor: Colors.white.withValues(
+                                alpha: 0.2,
+                              ),
                               disabledForegroundColor: Colors.white54,
                             ),
                             child: Text(choice),
@@ -382,6 +419,193 @@ class _StoryResultViewState extends State<_StoryResultView> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 동화 본문. 단어마다 누를 수 있게 띄어쓰기 단위로 나눠 보여준다.
+/// 문장부호만 있는 토큰(`—` 등)은 누를 수 없다.
+class _TappableStoryText extends StatelessWidget {
+  final String content;
+  final ValueChanged<String> onWordTap;
+
+  const _TappableStoryText({required this.content, required this.onWordTap});
+
+  static const _style = TextStyle(
+    fontSize: 24,
+    fontWeight: FontWeight.bold,
+    color: Colors.white,
+    fontFamily: 'Quicksand',
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = content.split(RegExp(r'\s+')).where((t) => t.isNotEmpty);
+    return Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      children: [
+        for (final token in tokens)
+          WordSaveProvider.normalize(token).isEmpty
+              ? Text(token, style: _style)
+              : InkWell(
+                  onTap: () => onWordTap(token),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 2,
+                      vertical: 4,
+                    ),
+                    child: Text(token, style: _style),
+                  ),
+                ),
+      ],
+    );
+  }
+}
+
+/// 누른 단어의 뜻과 단어장 저장 버튼. (P-ED-VB01)
+///
+/// 저장 중이거나 이미 단어장에 있는 단어면 버튼을 잠가 같은 단어가 두 번 저장되지 않게 한다.
+class _WordSheet extends StatefulWidget {
+  /// [WordSaveProvider.normalize]된 비교용 키.
+  final String word;
+  final String displayWord;
+  final int? storyId;
+
+  const _WordSheet({
+    required this.word,
+    required this.displayWord,
+    required this.storyId,
+  });
+
+  @override
+  State<_WordSheet> createState() => _WordSheetState();
+}
+
+class _WordSheetState extends State<_WordSheet> {
+  /// 이 시트에서 저장했는지. 원래 단어장에 있던 단어와 문구를 다르게 보여준다.
+  bool _justSaved = false;
+  String? _saveError;
+
+  Future<void> _save() async {
+    setState(() => _saveError = null);
+    final error = await context.read<WordSaveProvider>().save(
+      widget.word,
+      storyId: widget.storyId,
+    );
+    if (!mounted) return;
+    setState(() {
+      _saveError = error;
+      _justSaved = error == null;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<WordSaveProvider>();
+    final word = widget.word;
+    final meaning = provider.meaningOf(word);
+    final lookupError = provider.lookupErrorOf(word);
+    final isSaved = provider.isSaved(word);
+    final isSaving = provider.isSaving(word);
+
+    final Widget meaningView;
+    if (meaning != null) {
+      meaningView = Text(
+        meaning.koreanMeaning,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: Colors.white, fontSize: 22),
+      );
+    } else if (lookupError != null) {
+      meaningView = Column(
+        children: [
+          Text(
+            lookupError,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+          TextButton(
+            onPressed: () => provider.lookup(word),
+            child: const Text(
+              '다시 보기',
+              style: TextStyle(color: AppTheme.yellowColor),
+            ),
+          ),
+        ],
+      );
+    } else {
+      meaningView = const Column(
+        children: [
+          CircularProgressIndicator(color: AppTheme.yellowColor),
+          SizedBox(height: 12),
+          Text(
+            '뜻을 찾고 있어요...',
+            style: TextStyle(color: Colors.white70, fontSize: 16),
+          ),
+        ],
+      );
+    }
+
+    final String label;
+    final IconData icon;
+    if (isSaved) {
+      label = _justSaved ? '단어장에 저장했어요!' : '이미 저장했어요';
+      icon = Icons.check_circle;
+    } else if (isSaving) {
+      label = '저장하는 중...';
+      icon = Icons.hourglass_top;
+    } else {
+      label = '단어장에 저장';
+      icon = Icons.bookmark_add;
+    }
+    final canSave = meaning != null && !isSaved && !isSaving;
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              meaning?.englishWord ?? widget.displayWord,
+              style: const TextStyle(
+                color: AppTheme.yellowColor,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Quicksand',
+              ),
+            ),
+            const SizedBox(height: 16),
+            meaningView,
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: canSave ? _save : null,
+                icon: Icon(icon),
+                label: Text(label),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(56),
+                  disabledBackgroundColor: Colors.white12,
+                  disabledForegroundColor: Colors.white70,
+                ),
+              ),
+            ),
+            if (_saveError != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _saveError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppTheme.pastelPink,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );

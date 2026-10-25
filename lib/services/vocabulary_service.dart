@@ -5,8 +5,9 @@ import '../core/api_exception.dart';
 import '../core/api_response.dart';
 import '../models/page_result.dart';
 import '../models/vocabulary_entry.dart';
+import '../models/word_meaning.dart';
 
-/// 단어장 CRUD. (P-ED-VB01, P-ED-VB03)
+/// 단어장 CRUD와 단어 뜻 조회. (P-ED-VB01, P-ED-VB03)
 ///
 /// 백엔드 경로는 `/api/vocabulary`다. 계약은 Hanium-back
 /// `src/routes/vocabulary.route.js`, `src/controllers/vocabulary.controller.js` 기준.
@@ -31,7 +32,23 @@ class VocabularyService {
           'limit': limit,
         },
       ),
-      (response) => PageResult.fromJson(ApiResponse.data(response), VocabularyEntry.fromJson),
+      (response) => PageResult.fromJson(
+        ApiResponse.data(response),
+        VocabularyEntry.fromJson,
+      ),
+    );
+  }
+
+  /// GET /api/vocabulary/lookup?word → { english_word, korean_meaning }
+  /// 저장은 하지 않는다. 누른 토큰을 그대로 보내도 서버가 앞뒤 문장부호를 뗀다.
+  /// 뜻을 모르는 단어는 404, 요청이 잦으면 429, AI 호출 실패는 502.
+  Future<WordMeaning> lookupMeaning(String word) {
+    return _call(
+      () => _apiClient.dio.get<Map<String, dynamic>>(
+        '/vocabulary/lookup',
+        queryParameters: {'word': word},
+      ),
+      (response) => WordMeaning.fromJson(ApiResponse.data(response)),
     );
   }
 
@@ -56,7 +73,8 @@ class VocabularyService {
             'example_sentence': exampleSentence,
         },
       ),
-      (response) => VocabularyEntry.fromJson(ApiResponse.nested(response, 'entry')),
+      (response) =>
+          VocabularyEntry.fromJson(ApiResponse.nested(response, 'entry')),
     );
   }
 
