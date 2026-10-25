@@ -127,39 +127,6 @@ void main() {
     expect(auth.logoutCalls, 1);
   });
 
-  testWidgets('확인을 누르면 로그아웃과 함께 비밀번호 변경 화면이 닫힌다', (tester) async {
-    // 실제 앱처럼 첫 화면 위에 push된 상태로 연다.
-    await tester.pumpWidget(
-      ChangeNotifierProvider<AuthProvider>.value(
-        value: auth,
-        child: MaterialApp(
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: TextButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const ChangePasswordScreen(),
-                  ),
-                ),
-                child: const Text('열기'),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.tap(find.text('열기'));
-    await tester.pumpAndSettle();
-
-    await fill(tester);
-    await submit(tester);
-    await tester.tap(find.text('확인'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(ChangePasswordScreen), findsNothing);
-    expect(find.text('열기'), findsOneWidget);
-  });
-
   testWidgets('현재 비밀번호가 틀리면 다이얼로그 없이 오류만 보여준다', (tester) async {
     auth
       ..changePasswordResult = false

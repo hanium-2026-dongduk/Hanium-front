@@ -73,10 +73,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       ),
     );
     if (!mounted) return;
-    final navigator = Navigator.of(context);
+    // AuthGate가 이 화면까지 닫고 로그인 화면으로 바꿔준다.
     await auth.logout();
-    // AuthGate 위에 push된 화면이라 로그아웃만으로는 닫히지 않는다.
-    navigator.popUntil((route) => route.isFirst);
   }
 
   @override

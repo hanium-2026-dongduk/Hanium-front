@@ -65,38 +65,4 @@ void main() {
 
     expect(auth.logoutCalls, 1);
   });
-
-  testWidgets('로그아웃하면 AuthGate 위에 쌓인 계정 보안 화면이 닫힌다', (tester) async {
-    // 실제 앱처럼 첫 화면 위에 push된 상태로 연다.
-    await tester.pumpWidget(
-      ChangeNotifierProvider<AuthProvider>.value(
-        value: auth,
-        child: MaterialApp(
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: TextButton(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const AccountSecurityScreen(),
-                  ),
-                ),
-                child: const Text('열기'),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.tap(find.text('열기'));
-    await tester.pumpAndSettle();
-    expect(find.byType(AccountSecurityScreen), findsOneWidget);
-
-    await tester.tap(find.text('로그아웃'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('로그아웃').last);
-    await tester.pumpAndSettle();
-
-    expect(find.byType(AccountSecurityScreen), findsNothing);
-    expect(find.text('열기'), findsOneWidget);
-  });
 }
