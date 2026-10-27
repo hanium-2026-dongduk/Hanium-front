@@ -139,6 +139,20 @@ void main() {
     expect(find.text('이미지 생성 실패'), findsOneWidget);
   });
 
+  testWidgets('생성이 실패하면 제목이 "생성 완료!"가 아니라 실패 안내다', (tester) async {
+    final storyService = FakeStoryService()
+      ..createError = const ApiException(message: '이미지 생성 실패', statusCode: 500);
+
+    await _pumpResult(tester, storyService: storyService);
+
+    final appBar = find.byType(AppBar);
+    expect(
+      find.descendant(of: appBar, matching: find.text('앗, 동화를 못 만들었어요')),
+      findsOneWidget,
+    );
+    expect(find.text('생성 완료!'), findsNothing);
+  });
+
   testWidgets('storyId로 열면 조회해서 보여주고 퀴즈로 이어진다', (tester) async {
     await _pumpResult(tester, storyId: 11);
 

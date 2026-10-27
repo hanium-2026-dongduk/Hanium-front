@@ -35,7 +35,7 @@ class AccountSecurityScreen extends StatelessWidget {
     if (confirmed != true || !context.mounted) return;
 
     await context.read<AuthProvider>().logout();
-    // AuthGate가 로그인 화면으로 바꿔주므로 여기서 직접 이동하지 않는다.
+    // AuthGate가 이 화면까지 닫고 로그인 화면으로 바꿔주므로 여기서 직접 이동하지 않는다.
   }
 
   @override

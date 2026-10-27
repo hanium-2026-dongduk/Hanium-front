@@ -51,4 +51,34 @@ void main() {
 
     expect(find.byType(LoginScreen), findsOneWidget);
   });
+
+  // 로그아웃·비밀번호 변경·세션 만료는 모두 상태가 unauthenticated로 바뀌는 것으로 끝나서 한 번에 본다.
+  testWidgets('로그인 상태가 풀리면 위에 쌓인 화면을 모두 닫고 로그인 화면을 보여준다', (tester) async {
+    // 로그인 상태 화면(ProfileListScreen)은 서비스가 많이 필요해서, 토큰 확인 중 상태 위에 쌓는다.
+    final auth = _FakeAuthProvider(AuthStatus.unknown);
+    await tester.pumpWidget(wrap(auth));
+
+    final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(body: Text('위에 쌓인 화면')),
+      ),
+    );
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(body: Text('더 위에 쌓인 화면')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('더 위에 쌓인 화면'), findsOneWidget);
+
+    auth
+      ..status = AuthStatus.unauthenticated
+      ..notifyListeners();
+    await tester.pumpAndSettle();
+
+    expect(find.text('위에 쌓인 화면'), findsNothing);
+    expect(find.text('더 위에 쌓인 화면'), findsNothing);
+    expect(find.byType(LoginScreen), findsOneWidget);
+  });
 }

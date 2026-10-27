@@ -73,6 +73,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       ),
     );
     if (!mounted) return;
+    // AuthGate가 이 화면까지 닫고 로그인 화면으로 바꿔준다.
     await auth.logout();
   }
 
