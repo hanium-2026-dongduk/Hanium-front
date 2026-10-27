@@ -1,24 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hanium_front/models/character.dart';
+import 'package:hanium_front/models/child_profile.dart';
+import 'package:hanium_front/providers/active_child_provider.dart';
 import 'package:hanium_front/screens/story_creation_screen.dart';
 import 'package:hanium_front/screens/story_setting_screen.dart';
 import 'package:hanium_front/services/character_service.dart';
+import 'package:hanium_front/services/profile_service.dart';
 import 'package:provider/provider.dart';
 
 import '../support/fake_character_service.dart';
 
 /// 동화 생성 1단계(SG01·SG02) — 캐릭터 준비 방식별 분기를 본다.
-Future<FakeCharacterService> _pumpScreen(WidgetTester tester) async {
+class _StubProfileService implements ProfileService {
+  const _StubProfileService();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// [withChild]가 false면 자녀를 고르지 않은 상태로 화면을 연다.
+Future<FakeCharacterService> _pumpScreen(
+  WidgetTester tester, {
+  bool withChild = true,
+}) async {
   // 화면 전체(스크롤 없이 버튼까지)가 들어오도록 넉넉한 화면으로 그린다.
   tester.view.physicalSize = const Size(800, 1400);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
   final service = FakeCharacterService();
+  final activeChild = ActiveChildProvider(
+    profileService: const _StubProfileService(),
+  );
+  if (withChild) {
+    activeChild.setActiveChild(
+      const ChildProfile(childProfileId: 3, childName: '첫째'),
+    );
+  }
   await tester.pumpWidget(
     MultiProvider(
-      providers: [Provider<CharacterService>.value(value: service)],
+      providers: [
+        ChangeNotifierProvider<ActiveChildProvider>.value(value: activeChild),
+        Provider<CharacterService>.value(value: service),
+      ],
       child: const MaterialApp(home: StoryCreationScreen()),
     ),
   );
@@ -28,9 +53,10 @@ Future<FakeCharacterService> _pumpScreen(WidgetTester tester) async {
 
 void main() {
   testWidgets('기본값은 기존 캐릭터 선택이고 목록에서 고르면 다음 단계로 넘어간다', (tester) async {
-    await _pumpScreen(tester);
+    final service = await _pumpScreen(tester);
 
     expect(find.text('토끼'), findsOneWidget);
+    expect(service.lastFetchChildProfileId, 3);
     await tester.tap(find.text('토끼'));
     await tester.pump();
     await tester.tap(find.text('다음 단계로 (스토리 배경 설정)'));
@@ -74,5 +100,14 @@ void main() {
 
     expect(find.text('캐릭터 이름을 입력해 주세요!'), findsOneWidget);
     expect(service.createCalls, 0);
+  });
+
+  testWidgets('자녀를 선택하지 않았으면 안내 화면만 뜨고 캐릭터를 불러오지 않는다', (tester) async {
+    final service = await _pumpScreen(tester, withChild: false);
+
+    expect(find.text('먼저 자녀 프로필을 선택해 주세요.'), findsOneWidget);
+    expect(find.byType(AppBar), findsOneWidget);
+    expect(find.text('다음 단계로 (스토리 배경 설정)'), findsNothing);
+    expect(service.fetchCalls, 0);
   });
 }

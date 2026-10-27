@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
+import 'package:hanium_front/core/api_config.dart';
 import 'package:hanium_front/models/story.dart';
 import 'package:hanium_front/providers/active_child_provider.dart';
 import 'package:hanium_front/providers/library_provider.dart';
@@ -126,9 +126,9 @@ class _LibraryViewState extends State<_LibraryView> {
   }
 
   Future<void> _toggleFavorite(
-    LibraryProvider provider,
-    StorySummary story,
-  ) async {
+      LibraryProvider provider,
+      StorySummary story,
+      ) async {
     final ok = await provider.toggleFavorite(story);
     if (!ok && mounted) {
       ScaffoldMessenger.of(
@@ -155,11 +155,11 @@ class _LibraryViewState extends State<_LibraryView> {
     final displayedStories = _searchQuery.isEmpty
         ? provider.stories
         : provider.stories
-              .where(
-                (s) =>
-                    s.title.toLowerCase().contains(_searchQuery.toLowerCase()),
-              )
-              .toList();
+        .where(
+          (s) =>
+          s.title.toLowerCase().contains(_searchQuery.toLowerCase()),
+    )
+        .toList();
 
     return Scaffold(
       backgroundColor: AppTheme.navyColor,
@@ -168,23 +168,23 @@ class _LibraryViewState extends State<_LibraryView> {
         elevation: 0,
         title: _isSearching
             ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: '동화 제목을 검색하세요...',
-                  hintStyle: TextStyle(color: Colors.white54),
-                  border: InputBorder.none,
-                ),
-                onChanged: (value) => setState(() => _searchQuery = value),
-              )
+          controller: _searchController,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            hintText: '동화 제목을 검색하세요...',
+            hintStyle: TextStyle(color: Colors.white54),
+            border: InputBorder.none,
+          ),
+          onChanged: (value) => setState(() => _searchQuery = value),
+        )
             : const Text(
-                'MY LIBRARY',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+          'MY LIBRARY',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
@@ -235,12 +235,12 @@ class _LibraryViewState extends State<_LibraryView> {
                   // 삭제 모드 활성화 시 안내 텍스트
                   _isDeleteMode
                       ? const Text(
-                          '삭제할 동화를 선택하세요.',
-                          style: TextStyle(
-                            color: Colors.redAccent,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        )
+                    '삭제할 동화를 선택하세요.',
+                    style: TextStyle(
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
                       : const SizedBox.shrink(),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -248,7 +248,7 @@ class _LibraryViewState extends State<_LibraryView> {
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1), // withOpacity 대체
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: DropdownButtonHideUnderline(
@@ -289,29 +289,29 @@ class _LibraryViewState extends State<_LibraryView> {
                 emptyMessage: '아직 만든 동화가 없어요.\n첫 동화를 만들어 볼까요?',
                 contentBuilder: (context) => displayedStories.isEmpty
                     ? const Center(
-                        child: Text(
-                          '해당하는 동화가 없습니다.',
-                          style: TextStyle(color: Colors.white54, fontSize: 16),
-                        ),
-                      )
+                  child: Text(
+                    '해당하는 동화가 없습니다.',
+                    style: TextStyle(color: Colors.white54, fontSize: 16),
+                  ),
+                )
                     : GridView.builder(
-                        padding: const EdgeInsets.only(
-                          left: 32.0,
-                          right: 32.0,
-                          top: 16.0,
-                          bottom: 40.0,
-                        ),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 4,
-                              crossAxisSpacing: 28,
-                              mainAxisSpacing: 40,
-                              childAspectRatio: 0.68,
-                            ),
-                        itemCount: displayedStories.length,
-                        itemBuilder: (context, index) =>
-                            _buildStoryCard(provider, displayedStories[index]),
-                      ),
+                  padding: const EdgeInsets.only(
+                    left: 32.0,
+                    right: 32.0,
+                    top: 16.0,
+                    bottom: 40.0,
+                  ),
+                  gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    crossAxisSpacing: 28,
+                    mainAxisSpacing: 40,
+                    childAspectRatio: 0.68,
+                  ),
+                  itemCount: displayedStories.length,
+                  itemBuilder: (context, index) =>
+                      _buildStoryCard(provider, displayedStories[index]),
+                ),
               ),
             ),
           ],
@@ -336,7 +336,7 @@ class _LibraryViewState extends State<_LibraryView> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withValues(alpha: 0.4), // withOpacity 대체
             blurRadius: 12,
             offset: const Offset(6, 8),
           ),
@@ -351,7 +351,7 @@ class _LibraryViewState extends State<_LibraryView> {
             child: Container(
               width: 14,
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withValues(alpha: 0.08), // withOpacity 대체
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(4),
                   bottomLeft: Radius.circular(4),
@@ -374,11 +374,32 @@ class _LibraryViewState extends State<_LibraryView> {
                           topRight: Radius.circular(16),
                         ),
                       ),
-                      child: Center(
+                      // ✨ 여기서부터 썸네일 표시 로직 추가
+                      child: story.coverImageUrl != null && story.coverImageUrl!.isNotEmpty
+                          ? ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topRight: Radius.circular(16),
+                        ),
+                        child: Image.network(
+                          ApiConfig.resolveMediaUrl(story.coverImageUrl!),
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          // 이미지 로딩 실패 시 기존 아이콘 표시
+                          errorBuilder: (context, error, stackTrace) => Center(
+                            child: Icon(
+                              coverIcon,
+                              size: 64,
+                              color: AppTheme.navyColor.withValues(alpha: 0.5),
+                            ),
+                          ),
+                        ),
+                      )
+                          : Center(
                         child: Icon(
                           coverIcon,
                           size: 64,
-                          color: AppTheme.navyColor.withOpacity(0.5),
+                          color: AppTheme.navyColor.withValues(alpha: 0.5), // withOpacity 대체
                         ),
                       ),
                     ),
@@ -387,26 +408,26 @@ class _LibraryViewState extends State<_LibraryView> {
                       right: 4,
                       child: isTogglingFavorite
                           ? const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: SizedBox(
-                                height: 16,
-                                width: 16,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            )
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      )
                           : IconButton(
-                              icon: Icon(
-                                story.isFavorite
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: story.isFavorite
-                                    ? AppTheme.pastelPink
-                                    : Colors.white,
-                              ),
-                              onPressed: () => _toggleFavorite(provider, story),
-                            ),
+                        icon: Icon(
+                          story.isFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: story.isFavorite
+                              ? AppTheme.pastelPink
+                              : Colors.white,
+                        ),
+                        onPressed: () => _toggleFavorite(provider, story),
+                      ),
                     ),
                   ],
                 ),
@@ -444,28 +465,28 @@ class _LibraryViewState extends State<_LibraryView> {
                         width: double.infinity,
                         child: isDeleting
                             ? const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 10),
-                                child: Center(
-                                  child: SizedBox(
-                                    height: 16,
-                                    width: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                ),
-                              )
+                          padding: EdgeInsets.symmetric(vertical: 10),
+                          child: Center(
+                            child: SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
+                            ),
+                          ),
+                        )
                             : _isDeleteMode
                             ? _buildSmallButton(
-                                '삭제',
-                                Colors.redAccent,
-                                () => _showDeleteConfirmDialog(story),
-                              )
+                          '삭제',
+                          Colors.redAccent,
+                              () => _showDeleteConfirmDialog(story),
+                        )
                             : _buildSmallButton(
-                                '열기',
-                                AppTheme.pastelGreen,
-                                () => _openStory(story),
-                              ),
+                          '열기',
+                          AppTheme.pastelGreen,
+                              () => _openStory(story),
+                        ),
                       ),
                     ],
                   ),
@@ -489,7 +510,7 @@ class _LibraryViewState extends State<_LibraryView> {
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: bgColor.withOpacity(0.4),
+              color: bgColor.withValues(alpha: 0.4), // withOpacity 대체
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),

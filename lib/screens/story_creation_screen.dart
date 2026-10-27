@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:hanium_front/providers/active_child_provider.dart';
 import 'package:hanium_front/theme/theme.dart';
 import 'package:hanium_front/screens/story_setting_screen.dart';
 import 'package:hanium_front/models/story_payload.dart';
@@ -31,10 +32,32 @@ class StoryCreationScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // build()에서는 read 대신 select를 쓴다. read는 값이 바뀌어도 화면을 다시
+    // 그리지 않아서, 자녀를 바꿔도 이전 자녀 기준 화면이 그대로 남는다.
+    final childProfileId = context.select<ActiveChildProvider, int?>(
+      (provider) => provider.childProfileId,
+    );
+
+    // 자녀가 선택되지 않은 상태로 들어왔다면 안내만 보여 준다.
+    // 아이가 화면을 빠져나갈 수 있도록 AppBar(뒤로 가기)를 둔다.
+    if (childProfileId == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('✨ 새로운 동화 만들기'),
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: const Center(child: Text('먼저 자녀 프로필을 선택해 주세요.')),
+      );
+    }
+
     return ChangeNotifierProvider<CharacterProvider>(
-      create: (context) =>
-          CharacterProvider(characterService: context.read<CharacterService>())
-            ..load(),
+      // 자녀가 바뀌면 Provider를 새로 만들어 그 자녀 기준으로 다시 불러온다.
+      // (create는 한 번만 실행되므로 key가 없으면 이전 자녀의 목록이 남는다.)
+      key: ValueKey(childProfileId),
+      create: (context) => CharacterProvider(
+        characterService: context.read<CharacterService>(),
+        childProfileId: childProfileId, // 프로바이더 생성 시 ID를 넘겨준다.
+      )..load(),
       child: const _StoryCreationView(),
     );
   }
@@ -161,7 +184,10 @@ class _StoryCreationViewState extends State<_StoryCreationView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('✨ 새로운 동화 만들기')),
+      appBar: AppBar(
+        title: const Text('✨ 새로운 동화 만들기'),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       // 태블릿 대응: 전체 콘텐츠를 가운데 정렬하고 최대 너비(700) 제한
       body: Center(
         child: ConstrainedBox(

@@ -5,6 +5,7 @@ import 'package:hanium_front/models/daily_mission.dart';
 import 'package:hanium_front/models/page_result.dart';
 import 'package:hanium_front/models/reward_detail.dart';
 import 'package:hanium_front/models/reward_history_entry.dart';
+import 'package:hanium_front/models/story.dart';
 import 'package:hanium_front/models/user.dart';
 import 'package:hanium_front/models/vocabulary_entry.dart';
 
@@ -389,6 +390,23 @@ void main() {
       }, (json) => json['points'] as int);
 
       expect(result.hasMore, isFalse);
+    });
+  });
+
+  group('StorySummary 직렬화는', () {
+    test('서버의 UTC 생성 시각을 다른 모델처럼 로컬 시각으로 바꾼다', () {
+      final summary = StorySummary.fromJson({
+        'storyId': 3,
+        'title': 'A',
+        'isFavorite': true,
+        'createdAt': '2026-09-27T12:11:36.000Z',
+      });
+
+      expect(summary.createdAt!.isUtc, isFalse);
+      expect(
+        summary.createdAt,
+        DateTime.utc(2026, 9, 27, 12, 11, 36).toLocal(),
+      );
     });
   });
 }

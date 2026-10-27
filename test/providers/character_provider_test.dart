@@ -6,12 +6,17 @@ import 'package:hanium_front/providers/character_provider.dart';
 import '../support/fake_character_service.dart';
 
 void main() {
+  const childProfileId = 7;
+
   late FakeCharacterService service;
   late CharacterProvider provider;
 
   setUp(() {
     service = FakeCharacterService();
-    provider = CharacterProvider(characterService: service);
+    provider = CharacterProvider(
+      characterService: service,
+      childProfileId: childProfileId,
+    );
   });
 
   tearDown(() => provider.dispose());
@@ -26,6 +31,12 @@ void main() {
     expect(provider.characters, hasLength(1));
     expect(provider.characters.single.name, '토끼');
     expect(service.fetchCalls, 1);
+  });
+
+  test('load는 Provider가 가진 자녀 프로필 ID로 목록을 조회한다', () async {
+    await provider.load();
+
+    expect(service.lastFetchChildProfileId, childProfileId);
   });
 
   test('목록이 비어 있으면 isEmpty가 true다', () async {
@@ -60,6 +71,19 @@ void main() {
     expect(provider.characters, hasLength(2));
     expect(provider.isCreating, isFalse);
     expect(service.createCalls, 1);
+  });
+
+  test('create는 Provider가 가진 자녀 프로필 ID로 캐릭터를 만든다', () async {
+    await provider.load();
+
+    await provider.create(
+      name: '뽀로로',
+      personality: '용감해요',
+      description: '설명',
+      type: CharacterType.random,
+    );
+
+    expect(service.lastCreateChildProfileId, childProfileId);
   });
 
   test('create가 실패하면 null을 돌려주고 목록은 그대로다', () async {
